@@ -267,8 +267,16 @@ class PDFBuilder {
     // Online status
     this.doc.setFontSize(FONTS.size.small);
     this.doc.setFont('Roboto', 'normal');
-    const statusText = this.user.online ? '● Online' : '○ Offline';
-    const statusColor = this.user.online ? COLORS.success : COLORS.textLight;
+    let statusText = '○ Offline';
+    let statusColor = COLORS.textLight;
+
+    if (this.user.hidden) {
+      statusText = '◎ Đang ẩn trạng thái';
+      statusColor = COLORS.textLight;
+    } else if (this.user.online) {
+      statusText = '● Online';
+      statusColor = COLORS.success;
+    }
     this.doc.setTextColor(...statusColor);
     this.addText(statusText, this.pageWidth / 2, this.yPosition, { align: 'center' });
     

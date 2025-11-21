@@ -248,6 +248,9 @@ const getUserByUuid = async (uuid, viewerId = null) => {
   if (!isOwner && !user.showOnlineStatus) {
     userData.online = false;
     userData.lastOnline = null;
+    userData.hidden = true;
+  } else {
+    userData.hidden = false;
   }
 
   return userData;
@@ -329,6 +332,9 @@ const getUserFriendsByUuid = async (uuid, page = 1, limit = 10, viewerId = null)
       if (!friend.showOnlineStatus) {
         friendData.online = false;
         friendData.lastOnline = null;
+        friendData.hidden = true;
+      } else {
+        friendData.hidden = false;
       }
 
       delete friendData.showOnlineStatus;
@@ -351,6 +357,47 @@ const getUserFriendsByUuid = async (uuid, page = 1, limit = 10, viewerId = null)
     console.error('Error in getUserFriendsByUuid:', error);
     throw error;
   }
+};
+
+/**
+ * @desc Lấy trạng thái online/offline của danh sách user theo ID
+ * @param {Array<number|string>} ids - danh sách ID người dùng
+ * @param {number|null} viewerId - người xem (để hỗ trợ future privacy)
+ * @returns {Promise<Array<{userId:number, online:boolean, lastOnline:Date|null, hidden:boolean}>>}
+ */
+const getUsersStatusByIds = async (ids = [], viewerId = null) => {
+  const normalizedIds = Array.from(
+    new Set(
+      ids
+        .map((id) => parseInt(id, 10))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    )
+  );
+
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const users = await User.findAll({
+    where: { id: { [Op.in]: normalizedIds } },
+    attributes: ['id', 'online', 'lastOnline', 'showOnlineStatus'],
+  });
+
+  const statusMap = new Map();
+  users.forEach((user) => {
+    const plain = user.get({ plain: true });
+    const hidden = plain.showOnlineStatus === false && plain.id !== viewerId;
+    statusMap.set(plain.id, {
+      userId: plain.id,
+      online: hidden ? false : plain.online,
+      lastOnline: hidden ? null : plain.lastOnline,
+      hidden,
+    });
+  });
+
+  return normalizedIds
+    .map((id) => statusMap.get(id))
+    .filter(Boolean);
 };
 
 /**
@@ -580,4 +627,16 @@ const updateUserSocialLinks = async (userId, socialLinks) => {
   return user;
 };
 
-export { updateUserProfile, updateUserAvatar, updateUserCover, getUserByUuid, getUserFavoritesByUuid, getUserWatchHistoryByUuid, getUserFriendsByUuid, searchUsers, searchFriendsByUserId, updateUserSocialLinks };
+export {
+  updateUserProfile,
+  updateUserAvatar,
+  updateUserCover,
+  getUserByUuid,
+  getUserFavoritesByUuid,
+  getUserWatchHistoryByUuid,
+  getUserFriendsByUuid,
+  getUsersStatusByIds,
+  searchUsers,
+  searchFriendsByUserId,
+  updateUserSocialLinks,
+};

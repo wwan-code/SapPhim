@@ -1,5 +1,6 @@
 // ContinueWatchingModal.module.scss
-@import '@/assets/scss/variables';
+@use '../../assets/scss/variables' as *;
+@use '../../assets/scss/mixins' as *;
 
 .modalContent {
     padding: var(--w-spacing-md);

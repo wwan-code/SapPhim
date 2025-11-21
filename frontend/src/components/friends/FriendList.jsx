@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { useGetFriends } from '@/hooks/useFriendQueries';
 import userService from '@/services/userService';
+import { hydrateFriendStatuses } from '@/store/slices/friendSlice';
 import FriendCard from './FriendCard';
 import FriendCardSkeleton from './FriendCardSkeleton';
 import '@/assets/scss/components/friends/_friend-list.scss';
 
 const FriendList = ({ user, isOwnProfile = true }) => {
+  const dispatch = useDispatch();
+
   // Sử dụng React Query Infinite Query để fetch danh sách bạn bè
   const { 
     data, 
@@ -73,6 +77,30 @@ const FriendList = ({ user, isOwnProfile = true }) => {
   const friendsList = isOwnProfile 
     ? data?.pages?.flatMap(page => page.data) || []
     : otherUserFriends;
+
+  useEffect(() => {
+    if (!isOwnProfile || friendsList.length === 0) return;
+    const ids = Array.from(new Set(friendsList.map((friend) => friend.id).filter(Boolean)));
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+
+    const syncPresence = async () => {
+      try {
+        const response = await userService.getUsersPresence(ids);
+        if (!cancelled && response?.data) {
+          dispatch(hydrateFriendStatuses(response.data));
+        }
+      } catch (error) {
+        console.error('Không thể đồng bộ trạng thái bạn bè:', error);
+      }
+    };
+
+    syncPresence();
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, friendsList, isOwnProfile]);
 
   const isLoadingState = isOwnProfile ? isLoading : otherUserLoading;
   const isErrorState = isOwnProfile ? isError : !!otherUserError;

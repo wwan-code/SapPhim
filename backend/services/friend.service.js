@@ -195,12 +195,12 @@ const getFriends = async (userId, query = null, page = 1, limit = 10) => {
         {
           model: User,
           as: 'sender',
-          attributes: ['id', 'uuid', 'username', 'avatarUrl', 'online', 'lastOnline'],
+          attributes: ['id', 'uuid', 'username', 'avatarUrl', 'online', 'lastOnline', 'showOnlineStatus'],
         },
         {
           model: User,
           as: 'receiver',
-          attributes: ['id', 'uuid', 'username', 'avatarUrl', 'online', 'lastOnline'],
+          attributes: ['id', 'uuid', 'username', 'avatarUrl', 'online', 'lastOnline', 'showOnlineStatus'],
         },
       ],
       limit: validLimit,
@@ -225,7 +225,18 @@ const getFriends = async (userId, query = null, page = 1, limit = 10) => {
       if (!uniqueById.has(u.id)) uniqueById.set(u.id, u);
     }
 
-    const uniqueFriends = Array.from(uniqueById.values());
+    const uniqueFriends = Array.from(uniqueById.values()).map((friend) => {
+      const sanitized = { ...friend };
+      if (sanitized.showOnlineStatus === false) {
+        sanitized.online = false;
+        sanitized.lastOnline = null;
+        sanitized.hidden = true;
+      } else {
+        sanitized.hidden = false;
+      }
+      delete sanitized.showOnlineStatus;
+      return sanitized;
+    });
     const totalPages = Math.ceil(totalFriendships / validLimit);
     const hasMore = validPage < totalPages;
 
@@ -633,6 +644,7 @@ const searchUsers = async (query, currentUserId, options = {}) => {
         'avatarUrl',
         'online',
         'lastOnline',
+        'showOnlineStatus',
       ],
       include: [
         {
@@ -673,8 +685,14 @@ const searchUsers = async (query, currentUserId, options = {}) => {
       delete userData.sentFriendRequests;
       delete userData.receivedFriendRequests;
 
+      const isHidden = userData.showOnlineStatus === false;
+      delete userData.showOnlineStatus;
+
       return {
         ...userData,
+        online: isHidden ? false : userData.online,
+        lastOnline: isHidden ? null : userData.lastOnline,
+        hidden: isHidden,
         friendshipStatus,
       };
     });

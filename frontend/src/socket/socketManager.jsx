@@ -106,7 +106,7 @@ const optimisticUpdate = {
     return () => invalidate();
   })(),
 
-  userStatus: (userId, online, lastOnline) => {
+  userStatus: (userId, online, lastOnline, hidden) => {
     const currentUserId = getCurrentUserId();
 
     if (userId === currentUserId) {
@@ -114,7 +114,7 @@ const optimisticUpdate = {
       return;
     }
 
-    store.dispatch(onUserStatusUpdate({ userId, online, lastOnline }));
+    store.dispatch(onUserStatusUpdate({ userId, online, lastOnline, hidden }));
   },
 };
 
@@ -349,7 +349,7 @@ const attachEventHandlers = () => {
     queueEvent(
       'user_status_update',
       () => {
-        optimisticUpdate.userStatus(data.userId, data.online, data.lastOnline);
+        optimisticUpdate.userStatus(data.userId, data.online, data.lastOnline, data.hidden);
       },
       data
     );

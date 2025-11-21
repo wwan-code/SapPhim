@@ -4,13 +4,14 @@ import db from '../models/index.js';
 import { Op } from 'sequelize';
 import * as NotificationService from '../services/notification.service.js';
 import redisClient, { redisHelpers } from './redis.js';
+import { registerConnection, unregisterConnection, touchConnection, pruneStaleConnections } from '../services/presence.service.js';
 
 const { User, Friendship } = db;
 
 let ioInstance;
 const connectedUsers = new Map();
 const userSockets = new Map();
-let redisSubscriber = null; // Track subscriber for cleanup
+let redisSubscriber = null;
 
 export const REDIS_CHANNELS = {
   USER_STATUS: 'user:status',
@@ -119,29 +120,56 @@ const getFriendIds = async (userId) => {
   );
 };
 
+const normalizeLastOnline = (value) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const buildStatusPayloads = async (userId, online, lastOnlineIso) => {
+  try {
+    const user = await User.findByPk(userId, { attributes: ['showOnlineStatus'] });
+    const isHidden = user ? !user.showOnlineStatus : false;
+
+    return {
+      selfPayload: { userId, online, lastOnline: lastOnlineIso, hidden: false },
+      publicPayload: isHidden
+        ? { userId, online: false, lastOnline: null, hidden: true }
+        : { userId, online, lastOnline: lastOnlineIso, hidden: false },
+    };
+  } catch (error) {
+    console.error(`Error preparing status payload for user ${userId}:`, error);
+    return {
+      selfPayload: { userId, online, lastOnline: lastOnlineIso, hidden: false },
+      publicPayload: { userId, online, lastOnline: lastOnlineIso, hidden: false },
+    };
+  }
+};
+
 /**
- * Broadcast user status with error handling
- */
+* Broadcast user status with error handling
+*/
 const broadcastUserStatus = async (userId, online, lastOnline = null) => {
   try {
     const friendIds = await getFriendIds(userId);
-    const statusUpdate = { userId, online, lastOnline };
+    const isoValue = normalizeLastOnline(lastOnline);
+    const { selfPayload, publicPayload } = await buildStatusPayloads(userId, online, isoValue);
 
-    // Emit to user's own room
-    if (ioInstance) {
-      ioInstance.to(`user_${userId}`).emit('user_status_update', statusUpdate);
+    const publishToSocket = () => {
+      if (!ioInstance) return;
 
-      // Emit to friends using batch emitter
-      friendIds.forEach(friendId => {
-        batchEmitter.emit(`user_${friendId}`, 'user_status_update', statusUpdate);
+      ioInstance.to(`user_${userId}`).emit('user_status_update', selfPayload);
+      friendIds.forEach((friendId) => {
+        batchEmitter.emit(`user_${friendId}`, 'user_status_update', publicPayload);
       });
-    }
+    };
 
-    // Publish to Redis for multi-server sync
+    publishToSocket();
+
     if (redisClient.status === 'ready') {
       await redisClient.publish(
         REDIS_CHANNELS.USER_STATUS,
-        JSON.stringify({ userId, online, lastOnline, friendIds })
+        JSON.stringify({ userId, payloads: { selfPayload, publicPayload }, friendIds })
       );
     }
   } catch (error) {
@@ -220,14 +248,18 @@ const setupRedisSubscriptions = () => {
  * Channel-specific message handlers
  */
 const handleUserStatusUpdate = (data) => {
-  const { userId, online, lastOnline, friendIds } = data;
-  friendIds.forEach(friendId => {
-    ioInstance.to(`user_${friendId}`).emit('user_status_update', {
-      userId,
-      online,
-      lastOnline,
+  const { userId, payloads, friendIds } = data;
+  if (!ioInstance) return;
+
+  if (payloads?.selfPayload) {
+    ioInstance.to(`user_${userId}`).emit('user_status_update', payloads.selfPayload);
+  }
+
+  if (Array.isArray(friendIds) && payloads?.publicPayload) {
+    friendIds.forEach((friendId) => {
+      ioInstance.to(`user_${friendId}`).emit('user_status_update', payloads.publicPayload);
     });
-  });
+  }
 };
 
 const handleFriendRequest = (data) => {
@@ -320,18 +352,29 @@ export const initSocket = (httpServer) => {
 
     console.log(`✅ User ${userId} connected (socket: ${socket.id})`);
 
-    // Set user online status
-    try {
-      await db.sequelize.transaction(async (t) => {
-        await User.update(
-          { online: true, lastOnline: null },
-          { where: { id: userId }, transaction: t }
-        );
-      });
+    const connectionMeta = {
+      ip: socket.handshake.address,
+      userAgent: socket.handshake.headers['user-agent'] || '',
+      device: socket.handshake.auth?.device || null,
+    };
 
-      await broadcastUserStatus(userId, true, null);
+    try {
+      const { isFirstConnection } = await registerConnection(userId, socket.id, connectionMeta);
+
+      if (isFirstConnection) {
+        await db.sequelize.transaction(async (t) => {
+          await User.update(
+            { online: true, lastOnline: null },
+            { where: { id: userId }, transaction: t }
+          );
+        });
+
+        await broadcastUserStatus(userId, true, null);
+      } else {
+        socket.emit('user_status_update', { userId, online: true, lastOnline: null, hidden: false });
+      }
     } catch (error) {
-      console.error(`Error setting user ${userId} online:`, error);
+      console.error(`Error registering connection for user ${userId}:`, error);
     }
 
     // Notification subscription
@@ -362,25 +405,35 @@ export const initSocket = (httpServer) => {
       const sockets = userSockets.get(userId);
       if (sockets) {
         sockets.delete(socket.id);
-
-        // Only set offline if no more connections
         if (sockets.size === 0) {
           userSockets.delete(userId);
           connectedUsers.delete(userId);
-
-          try {
-            await db.sequelize.transaction(async (t) => {
-              await User.update(
-                { online: false, lastOnline: new Date() },
-                { where: { id: userId }, transaction: t }
-              );
-            });
-
-            await broadcastUserStatus(userId, false, new Date());
-          } catch (error) {
-            console.error(`Error setting user ${userId} offline:`, error);
+        } else {
+          const [firstSocket] = sockets;
+          if (firstSocket) {
+            connectedUsers.set(userId, firstSocket);
           }
         }
+      } else {
+        connectedUsers.delete(userId);
+      }
+
+      try {
+        const { hasConnections } = await unregisterConnection(userId, socket.id);
+
+        if (!hasConnections) {
+          const offlineAt = new Date();
+          await db.sequelize.transaction(async (t) => {
+            await User.update(
+              { online: false, lastOnline: offlineAt },
+              { where: { id: userId }, transaction: t }
+            );
+          });
+
+          await broadcastUserStatus(userId, false, offlineAt);
+        }
+      } catch (error) {
+        console.error(`Error handling disconnect for user ${userId}:`, error);
       }
     });
 
@@ -405,11 +458,13 @@ export const initSocket = (httpServer) => {
         const socket = ioInstance.sockets.sockets.get(socketId);
         if (socket && socket.connected) {
           hasActiveConnection = true;
-          break;
+          await touchConnection(userId, socketId);
+        } else {
+          socketIds.delete(socketId);
         }
       }
 
-      if (!hasActiveConnection) {
+      if (!hasActiveConnection && socketIds.size === 0) {
         usersToUpdateOffline.push(userId);
         userSockets.delete(userId);
         connectedUsers.delete(userId);
@@ -424,7 +479,7 @@ export const initSocket = (httpServer) => {
             { where: { id: { [Op.in]: usersToUpdateOffline } }, transaction: t }
           );
         });
-        console.log(`✅ Updated ${usersToUpdateOffline.length} users to offline.`);
+        console.log(`✅ Updated ${usersToUpdateOffline.length} users to offline (local cleanup).`);
 
         for (const userId of usersToUpdateOffline) {
           await broadcastUserStatus(userId, false, now);
@@ -432,6 +487,28 @@ export const initSocket = (httpServer) => {
       } catch (error) {
         console.error('Error updating offline status for stale connections:', error);
       }
+    }
+
+    try {
+      const stalePresence = await pruneStaleConnections();
+      if (stalePresence.length > 0) {
+        for (const entry of stalePresence) {
+          const offlineDate = new Date(entry.disconnectedAt || Date.now());
+          try {
+            await db.sequelize.transaction(async (t) => {
+              await User.update(
+                { online: false, lastOnline: offlineDate },
+                { where: { id: entry.userId }, transaction: t }
+              );
+            });
+            await broadcastUserStatus(entry.userId, false, offlineDate);
+          } catch (error) {
+            console.error(`Error updating offline status for user ${entry.userId} during prune:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error during global presence pruning:', error);
     }
   }, 60 * 1000); // Run every 1 minute
 

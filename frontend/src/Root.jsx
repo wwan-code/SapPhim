@@ -24,7 +24,7 @@ const Root = ({ children }) => {
     return () => {
       disconnectSocket();
     };
-  }, [accessToken, dispatch, clearNotificationCache]); // Re-run effect when accessToken changes, include dispatch and clearNotificationCache
+  }, [accessToken, dispatch, clearNotificationCache]);
 
   return (
     <>

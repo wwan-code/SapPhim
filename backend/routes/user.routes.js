@@ -18,6 +18,7 @@ router.delete('/me/cover', verifyToken, userController.deleteCover);
 // Public search endpoint
 router.get('/search', userController.searchUsers);
 router.get('/search/friends', verifyToken, userController.searchFriends);
+router.get('/status/bulk', verifyToken, userController.getUsersPresence);
 
 // Routes cho profile của người dùng khác (public)
 router.get('/:uuid', verifyTokenOptional, userController.getUserByUuid);

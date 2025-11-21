@@ -18,9 +18,8 @@ import sequelize from './config/database.js';
 import { initSocket } from './config/socket.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import logger from './utils/logger.js';
-import './workers/viewWorker.js'; // Initialize worker
+import './workers/viewWorker.js';
 
-// Import routes
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import friendRoutes from './routes/friend.routes.js';
@@ -58,13 +57,11 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Cho phép requests không có origin (như mobile apps, Postman)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      // Log để debug
       logger.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
@@ -75,15 +72,13 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// ==================== SECURITY & MIDDLEWARE ====================
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false, // Disable for development
+    contentSecurityPolicy: false,
   })
 );
 
-// Morgan logging với format tùy chỉnh
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
@@ -112,20 +107,20 @@ const sessionStore = new SequelizeStore({ db: sequelize });
 app.use(session({
   secret: process.env.JWT_SECRET,
   resave: false,
-  saveUninitialized: false, // Changed to false for better performance
+  saveUninitialized: false,
   store: sessionStore,
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
   },
-  name: 'sessionId', // Custom session name
+  name: 'sessionId',
 }));
 
 // ==================== STATIC FILES ====================
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  maxAge: '1d', // Cache static files for 1 day
+  maxAge: '1d',
   etag: true,
 }));
 
@@ -195,15 +190,12 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 const startServer = async () => {
   try {
-    // Test database connection
     await sequelize.authenticate();
     logger.info('✅ Database connection established successfully');
 
-    // Sync session store
     await sessionStore.sync();
     logger.info('✅ Session store synchronized');
 
-    // Start HTTP server
     httpServer.listen(PORT, HOST, () => {
       logger.info(`🚀 Server running on ${HOST}:${PORT}`);
       logger.info(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);

@@ -6,6 +6,31 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// @desc    Lấy trạng thái online/offline của nhiều người dùng
+// @route   GET /api/users/status/bulk?ids=1,2,3
+// @access  Private
+const getUsersPresence = asyncHandler(async (req, res) => {
+  const idsParam = req.query.ids;
+  let ids = [];
+
+  if (Array.isArray(idsParam)) {
+    ids = idsParam;
+  } else if (typeof idsParam === 'string') {
+    ids = idsParam.split(',');
+  }
+
+  const statuses = await userService.getUsersStatusByIds(ids, req.user?.id || null);
+
+  res.status(200).json({
+    data: statuses,
+    message: 'Lấy trạng thái người dùng thành công.',
+    errors: null,
+    meta: {
+      count: statuses.length,
+    },
+  });
+});
+
 // @desc    Lấy thông tin profile của người dùng
 // @route   GET /api/users/me
 // @access  Private
@@ -231,4 +256,4 @@ const updateSocialLinks = asyncHandler(async (req, res) => {
   });
 });
 
-export { getProfile, updateProfile, uploadAvatar, deleteAvatar, uploadCover, deleteCover, getUserByUuid, getUserFavoritesByUuid, getUserWatchHistoryByUuid, getUserFriendsByUuid, searchFriends, searchUsers, updateSocialLinks };
+export { getProfile, updateProfile, uploadAvatar, deleteAvatar, uploadCover, deleteCover, getUserByUuid, getUserFavoritesByUuid, getUserWatchHistoryByUuid, getUserFriendsByUuid, searchFriends, searchUsers, updateSocialLinks, getUsersPresence };

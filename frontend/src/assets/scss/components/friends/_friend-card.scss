@@ -110,6 +110,12 @@
         &--offline {
             background: var(--w-secondary-color);
         }
+
+        &--hidden {
+            background: var(--w-warning-color);
+            box-shadow: 0 0 0 2px rgba(var(--w-warning-color-rgb), 0.2),
+                0 0 8px rgba(var(--w-warning-color-rgb), 0.4);
+        }
     }
 
     &__info {

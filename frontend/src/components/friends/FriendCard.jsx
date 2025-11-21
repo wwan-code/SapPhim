@@ -16,6 +16,7 @@ import '@/assets/scss/components/friends/_friend-card.scss';
 const FriendCard = ({ user, type }) => {
   const navigate = useNavigate();
   const currentUser = useSelector((state) => state.auth.user);
+  const friendStatus = useSelector((state) => state.friends.friendStatuses[user.id]);
   const [isHovered, setIsHovered] = useState(false);
 
   // Sử dụng các mutation hooks từ React Query
@@ -155,6 +156,20 @@ const FriendCard = ({ user, type }) => {
     }
   };
 
+  const baseHidden = !!user.hidden;
+  const baseOnline = baseHidden ? false : !!user.online;
+  const baseLastOnline = baseHidden ? null : user.lastOnline;
+
+  const hiddenStatus = friendStatus?.hidden ?? baseHidden;
+  const effectiveOnline = hiddenStatus ? false : (friendStatus?.online ?? baseOnline);
+  const effectiveLastOnline = hiddenStatus ? null : (friendStatus?.lastOnline ?? baseLastOnline);
+
+  const statusTitle = hiddenStatus
+    ? 'Người dùng đã ẩn trạng thái online.'
+    : effectiveOnline
+      ? 'Đang online'
+      : `Offline — lần cuối ${effectiveLastOnline ? formatDistanceToNow(effectiveLastOnline) : 'không rõ'}`;
+
   return (
     <article 
       className={classNames('friend-card', {
@@ -180,11 +195,12 @@ const FriendCard = ({ user, type }) => {
           />
           <span 
             className={classNames('friend-card__status-indicator', {
-              'friend-card__status-indicator--online': user.online,
-              'friend-card__status-indicator--offline': !user.online,
+              'friend-card__status-indicator--online': effectiveOnline,
+              'friend-card__status-indicator--offline': !effectiveOnline,
+              'friend-card__status-indicator--hidden': hiddenStatus,
             })}
-            title={user.online ? 'Đang online' : `Offline — lần cuối ${user.lastOnline ? formatDistanceToNow(user.lastOnline) : 'không rõ'}`}
-            aria-label={user.online ? 'Đang online' : 'Đang offline'}
+            title={statusTitle}
+            aria-label={hiddenStatus ? 'Đang ẩn trạng thái' : effectiveOnline ? 'Đang online' : 'Đang offline'}
           />
         </div>
         
