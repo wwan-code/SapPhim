@@ -1,0 +1,255 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+// Import the new animation keyframes
+@include floating-element-animations;
+
+.user-dropdown {
+  // The trigger button styles remain largely the same
+  &__trigger {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    border-radius: var(--w-border-radius-circle);
+    position: relative;
+    @include transition(all, var(--w-motion-duration-medium), var(--w-motion-easing-elegant));
+    will-change: transform, filter;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 2px;
+      background: linear-gradient(135deg, rgba(var(--w-primary-color-rgb), 0.5), transparent 50%);
+      -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+      mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      @include transition(opacity, var(--w-motion-duration-medium), ease);
+    }
+
+    &[aria-expanded="true"] {
+      transform: scale(1.02) translateY(-1px);
+      filter: drop-shadow(0 4px 12px rgba(var(--w-primary-color-rgb), 0.3));
+      
+      &::before { opacity: 1; }
+
+      .user-dropdown__avatar {
+        box-shadow: 
+          0 0 0 3px rgba(var(--w-primary-color-rgb), 0.4),
+          0 8px 24px -4px rgba(var(--w-primary-color-rgb), 0.3);
+      }
+    }
+
+    &:hover:not([aria-expanded="true"]) {
+      transform: scale(1.05);
+      .user-dropdown__avatar {
+        box-shadow: 
+          0 0 0 2px rgba(var(--w-background-color-rgb), 0.1),
+          0 0 15px 0 rgba(var(--w-primary-color-rgb), 0.5);
+      }
+    }
+
+    @include focus-visible();
+  }
+
+  &__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--w-border-radius-circle);
+    object-fit: cover;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    @include transition(all, var(--w-motion-duration-medium), var(--w-motion-easing-elegant));
+    box-shadow: 
+      0 0 0 2px rgba(var(--w-primary-color-rgb), 0.3),
+      0 4px 8px -2px rgba(0, 0, 0, 0.1);
+
+    @include breakpoint(mobile) {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  &__content {
+    @include floating-element-container;
+    min-width: 280px;
+
+    // Apply animations based on the data-open attribute from the hook
+    &[data-open="true"] {
+      @include motion(
+        liquidUnfold,
+        var(--w-motion-duration-slow),
+        var(--w-motion-easing-elegant)
+      );
+    }
+    &[data-open="false"] {
+      @include motion(
+        liquidCompressAndFold,
+        var(--w-motion-duration-fast),
+        var(--w-motion-easing-snappy)
+      );
+    }
+  }
+
+  // Wrapper for inner content to apply layered animation
+  &__content-wrapper {
+    @include floating-element-content;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  // ============================================
+  // MOBILE - Full Screen Overlay (Consistent with NotificationDropdown)
+  // ============================================
+  &__content--mobile {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh !important;
+    min-width: auto;
+    border-radius: 0;
+    // Mobile animation is a slide-up
+    transition: transform 0.4s var(--w-motion-easing-elegant);
+    transform: translateY(100%);
+    
+    &[data-open="true"] {
+      transform: translateY(0);
+      animation: none; // Disable liquid unfold on mobile
+    }
+    
+    &[data-open="false"] {
+      transform: translateY(100%);
+      animation: none; // Disable liquid fold on mobile
+    }
+  }
+
+  // ============================================
+  // HEADER & MENU SECTIONS (Styling remains the same)
+  // ============================================
+  &__header {
+    padding: var(--w-spacing-lg);
+    position: relative;
+    @include flex(row, space-between, center);
+    gap: var(--w-spacing-md);
+    
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: var(--w-spacing-md);
+      right: var(--w-spacing-md);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--w-text-color-rgb), 0.1) 50%, transparent);
+    }
+  }
+
+  &__header-main {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-md);
+  }
+
+  &__close-btn {
+    // Use the same style as notification dropdown action buttons for consistency
+    @include flex(row, center, center);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--w-border-radius-circle);
+    background-color: transparent;
+    color: var(--w-text-color-light);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    font-size: var(--w-font-size-lg);
+    @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+
+    &:hover {
+      color: var(--w-text-color);
+      transform: scale(1.05);
+    }
+  }
+
+  &__header-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--w-border-radius-circle);
+    object-fit: cover;
+  }
+
+  &__header-info {
+    @include flex(column, center, flex-start);
+    gap: var(--w-spacing-xs);
+  }
+
+  &__title {
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-semibold);
+    color: var(--w-text-color);
+    margin: 0;
+  }
+
+  &__subtitle {
+    font-size: var(--w-font-size-sm);
+    color: var(--w-text-color-light);
+    margin: 0;
+  }
+
+  &__menu {
+    list-style: none;
+    padding: var(--w-spacing-md) var(--w-spacing-sm);
+    margin: 0;
+  }
+
+  &__menu-item {
+    &:not(:last-child) {
+      margin-bottom: var(--w-spacing-xs);
+    }
+  }
+
+  &__menu-link,
+  &__menu-button {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-md);
+    width: 100%;
+    padding: var(--w-spacing-sm) var(--w-spacing-md);
+    color: var(--w-text-color);
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--w-border-radius-lg);
+    text-align: left;
+    font-size: var(--w-font-size-md);
+    position: relative;
+    @include transition(all, 0.2s, ease);
+
+    i {
+      font-size: var(--w-font-size-lg);
+      color: var(--w-text-color-light);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    &:hover {
+      background: rgba(var(--w-primary-color-rgb), 0.1);
+      color: var(--w-primary-color);
+      transform: translateX(4px);
+      i { color: var(--w-primary-color); }
+    }
+    
+    &--danger:hover {
+      background: rgba(var(--w-danger-color-rgb), 0.1);
+      color: var(--w-danger-color);
+      i { color: var(--w-danger-color); }
+    }
+
+    @include focus-visible();
+  }
+}

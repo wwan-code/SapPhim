@@ -1,0 +1,149 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.friend-card-skeleton {
+    position: relative;
+    padding: var(--w-spacing-md);
+    border-radius: var(--w-border-radius-xl);
+    @include liquid-glass-complete($blur: var(--w-blur-md), $opacity: 0.85);
+    @include flex(column, space-between, stretch);
+    gap: var(--w-spacing-md);
+    overflow: hidden;
+    isolation: isolate;
+    pointer-events: none;
+
+    @include breakpoint(mobile) {
+        padding: var(--w-spacing-sm);
+        gap: var(--w-spacing-sm);
+    }
+
+    // 🎨 HEADER SECTION
+    &__header {
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-md);
+        position: relative;
+        z-index: 1;
+
+        @include breakpoint(mobile) {
+            gap: var(--w-spacing-sm);
+        }
+    }
+
+    &__avatar-wrapper {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    &__avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--w-border-radius-circle);
+        background: linear-gradient(90deg,
+                var(--w-background-color-light) 25%,
+                var(--w-border-color-dark) 50%,
+                var(--w-background-color-light) 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s infinite;
+
+        @include breakpoint(mobile) {
+            width: 56px;
+            height: 56px;
+        }
+    }
+
+    &__status {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: var(--w-border-radius-circle);
+        background: var(--w-background-color-light);
+        border: 2px solid var(--w-background-color);
+
+        @include breakpoint(mobile) {
+            width: 14px;
+            height: 14px;
+        }
+    }
+
+    &__info {
+        flex: 1;
+        min-width: 0;
+        @include flex(column, center, flex-start);
+        gap: 8px;
+    }
+
+    &__username {
+        width: 70%;
+        height: 18px;
+        border-radius: var(--w-border-radius-sm);
+        background: linear-gradient(90deg,
+                var(--w-background-color-light) 25%,
+                var(--w-border-color-dark) 50%,
+                var(--w-background-color-light) 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s infinite;
+        animation-delay: 0.1s;
+
+        @include breakpoint(mobile) {
+            height: 16px;
+        }
+    }
+
+    &__status-text {
+        width: 50%;
+        height: 14px;
+        border-radius: var(--w-border-radius-sm);
+        background: linear-gradient(90deg,
+                var(--w-background-color-light) 25%,
+                var(--w-border-color-dark) 50%,
+                var(--w-background-color-light) 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s infinite;
+        animation-delay: 0.2s;
+
+        @include breakpoint(mobile) {
+            height: 12px;
+        }
+    }
+
+    // 🎨 ACTIONS SECTION
+    &__actions {
+        @include flex(row, flex-end, center);
+        gap: var(--w-spacing-sm);
+        position: relative;
+        z-index: 1;
+
+        @include breakpoint(mobile) {
+            gap: var(--w-spacing-xs);
+        }
+    }
+
+    &__action-btn {
+        height: 32px;
+        width: 80px;
+        border-radius: var(--w-border-radius-md);
+        background: linear-gradient(90deg,
+                var(--w-background-color-light) 25%,
+                var(--w-border-color-dark) 50%,
+                var(--w-background-color-light) 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s infinite;
+        animation-delay: 0.3s;
+
+        @include breakpoint(mobile) {
+            height: 28px;
+            width: 70px;
+        }
+
+        &--small {
+            width: 60px;
+            animation-delay: 0.4s;
+
+            @include breakpoint(mobile) {
+                width: 50px;
+            }
+        }
+    }
+}

@@ -1,0 +1,765 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+/**
+ * ListCard Component - Liquid Glass Design
+ * Hỗ trợ dark mode với frosted glass effect và smooth animations
+ * Đồng bộ với ChartCard và StatCard
+ */
+
+.list-card {
+  // Base Liquid Glass Effect
+  @include liquid-glass-complete($blur: var(--w-blur-md), $opacity: 0.85);
+  @include flex(column, flex-start, stretch);
+  
+  // Layout
+  gap: var(--w-spacing-md);
+  position: relative;
+  overflow: hidden;
+  padding: var(--w-spacing-lg);
+  border-radius: var(--w-border-radius-lg);
+  
+  // Multi-layer Shadow
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  
+  // Smooth Transitions
+  @include transition(
+    all, 
+    var(--w-motion-duration-medium), 
+    var(--w-motion-easing-elegant)
+  );
+  
+  // Hover Effect
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.12),
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      inset 0 1px 2px rgba(255, 255, 255, 0.15);
+    border-color: var(--w-glass-border-heavy);
+  }
+
+  @include breakpoint(mobile) {
+    padding: var(--w-spacing-md);
+  }
+
+  // Header Section
+  &__header {
+    @include flex(row, space-between, center);
+    gap: var(--w-spacing-md);
+    margin-bottom: var(--w-spacing-sm);
+    flex-wrap: wrap;
+    padding-bottom: var(--w-spacing-md);
+    border-bottom: 1px solid var(--w-glass-border-light);
+    position: relative;
+    
+    // Subtle gradient overlay
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--w-primary-color) 50%,
+        transparent
+      );
+      opacity: 0;
+      transition: opacity var(--w-motion-duration-fast) var(--w-motion-easing-elegant);
+    }
+
+    // Styling for trending variant header
+    .list-card--trending & {
+      margin-bottom: var(--w-spacing-md);
+    }
+  }
+  
+  .list-card:hover &__header::after {
+    opacity: 0.3;
+  }
+
+  &__title {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-sm);
+    font-size: var(--w-font-size-lg);
+    font-weight: var(--w-font-weight-bold);
+    color: var(--w-text-color);
+    margin: 0;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-md);
+    }
+
+    // Styling for comment analytics list card title
+    .comment-analytics & {
+      margin: 0 0 var(--w-spacing-lg) 0;
+      padding-bottom: var(--w-spacing-md);
+      border-bottom: 2px solid var(--w-border-color);
+
+      @include breakpoint(mobile) {
+        font-size: var(--w-font-size-md);
+        margin-bottom: var(--w-spacing-md);
+      }
+    }
+  }
+
+  &__subtitle {
+    font-size: var(--w-font-size-sm);
+    color: var(--w-secondary-color);
+    margin: 0;
+    opacity: 0.9;
+  }
+
+  &__icon {
+    color: var(--w-primary-color);
+    font-size: var(--w-font-size-xl);
+    transition: transform var(--w-motion-duration-fast) var(--w-motion-easing-spring);
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-lg);
+    }
+  }
+  
+  .list-card:hover &__icon {
+    transform: scale(1.1) rotate(-5deg);
+  }
+
+  &__filters {
+    // Placeholder for filter section if needed
+    margin-bottom: var(--w-spacing-md);
+  }
+
+  &__actions {
+    @include flex(row, flex-end, center);
+    gap: var(--w-spacing-sm);
+  }
+
+  // Body Section
+  &__body {
+    flex: 1; // Đảm bảo body chiếm hết không gian còn lại
+  }
+
+  &__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-sm); // Thêm gap cho các item trong list
+  }
+
+  &__item {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-md);
+    padding: var(--w-spacing-md);
+    border-radius: var(--w-border-radius-md);
+    background: var(--w-glass-tint-light);
+    backdrop-filter: blur(var(--w-blur-sm));
+    border: 1px solid var(--w-glass-border-light);
+    @include transition(
+      all,
+      var(--w-motion-duration-fast),
+      var(--w-motion-easing-spring)
+    );
+    position: relative;
+    overflow: hidden;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:hover {
+      background: var(--w-glass-tint-medium);
+      transform: translateX(4px);
+      box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.1),
+        inset 0 1px 2px rgba(255, 255, 255, 0.1);
+      border-color: var(--w-primary-color);
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 4px;
+      background: linear-gradient(
+        180deg,
+        var(--w-primary-color),
+        rgba(var(--w-primary-color-rgb), 0.5)
+      );
+      transform: translateX(-100%);
+      @include transition(
+        transform,
+        var(--w-motion-duration-fast),
+        var(--w-motion-easing-spring)
+      );
+    }
+
+    &:hover::before {
+      transform: translateX(0);
+    }
+
+    @include breakpoint(mobile) {
+      padding: var(--w-spacing-sm);
+      gap: var(--w-spacing-sm);
+    }
+  }
+
+  &__rank {
+    @include flex(row, center, center);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--w-border-radius-circle);
+    background: linear-gradient(135deg, var(--w-primary-color), var(--w-primary-color-hover));
+    color: var(--w-text-color-light);
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-bold);
+    flex-shrink: 0;
+    @include shadow(sm);
+
+    @include breakpoint(mobile) {
+      width: 28px;
+      height: 28px;
+      font-size: var(--w-font-size-sm);
+    }
+
+    // Top 3 ranks
+    .list-card__item:nth-child(1) & {
+      background: linear-gradient(135deg, #FFD700, #FFA500); // Gold
+      @include shadow(md);
+    }
+
+    .list-card__item:nth-child(2) & {
+      background: linear-gradient(135deg, #C0C0C0, #A8A8A8); // Silver
+    }
+
+    .list-card__item:nth-child(3) & {
+      background: linear-gradient(135deg, #CD7F32, #B87333); // Bronze
+    }
+  }
+
+  &__info {
+    @include flex(column, center, flex-start);
+    gap: var(--w-spacing-xs);
+    flex: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit; // Kế thừa màu chữ
+    @include focus-visible; // Focus accessibility
+  }
+
+  &__name {
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-semibold);
+    color: var(--w-text-color);
+    @include text-truncate(1);
+    width: 100%;
+    @include transition(
+      color,
+      var(--w-motion-duration-fast),
+      var(--w-motion-easing-elegant)
+    );
+
+    .list-card__item:hover & {
+      color: var(--w-primary-color);
+    }
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-sm);
+    }
+  }
+
+  &__meta {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-xs);
+    font-size: var(--w-font-size-sm);
+    color: var(--w-secondary-color);
+    opacity: 0.9;
+
+    svg {
+      font-size: var(--w-font-size-md);
+      color: var(--w-primary-color);
+      transition: transform var(--w-motion-duration-fast);
+    }
+    
+    .list-card__item:hover & svg {
+      transform: scale(1.1);
+    }
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-xs);
+    }
+  }
+
+  // Footer Section
+  &__footer {
+    margin-top: var(--w-spacing-md);
+    padding-top: var(--w-spacing-md);
+    border-top: 1px solid var(--w-border-color);
+    @include flex(row, center, center);
+  }
+
+  // Modifiers
+  &--compact {
+    padding: var(--w-spacing-md);
+
+    .list-card__title {
+      font-size: var(--w-font-size-md);
+      margin-bottom: var(--w-spacing-sm);
+    }
+
+    .list-card__item {
+      padding: var(--w-spacing-sm);
+      gap: var(--w-spacing-sm);
+    }
+
+    .list-card__rank {
+      width: 28px;
+      height: 28px;
+      font-size: var(--w-font-size-sm);
+    }
+
+    .list-card__name {
+      font-size: var(--w-font-size-sm);
+    }
+
+    .list-card__meta {
+      font-size: var(--w-font-size-xs);
+    }
+  }
+
+  &--loading {
+    .list-card__body {
+      @include flex(column, center, center);
+      min-height: 150px; // Chiều cao tối thiểu cho skeleton
+    }
+  }
+
+  &--error {
+    .list-card__body {
+      @include flex(column, center, center);
+      min-height: 150px;
+    }
+  }
+
+  &--empty {
+    .list-card__body {
+      @include flex(column, center, center);
+      min-height: 150px;
+    }
+  }
+
+  &--trending {
+    .list-card__title {
+      color: var(--w-warning-color);
+
+      .list-card__icon {
+        color: var(--w-warning-color);
+        animation: pulse-bg 2s ease-in-out infinite;
+      }
+    }
+  }
+
+  // States
+  &__loading,
+  &__empty,
+  &__error {
+    @include flex(column, center, center);
+    padding: var(--w-spacing-xxl);
+    color: var(--w-secondary-color);
+    font-size: var(--w-font-size-md);
+    font-style: italic;
+    text-align: center;
+    gap: var(--w-spacing-md);
+    min-height: 200px;
+
+    &::before {
+      display: block;
+      font-size: calc(var(--w-font-size-h1) * 1.5);
+      margin-bottom: var(--w-spacing-sm);
+      opacity: 0.4;
+      animation: pulse-scale 2s ease-in-out infinite;
+    }
+  }
+
+  &__empty {
+    &::before {
+      content: '📝';
+    }
+  }
+
+  &__error {
+    color: var(--w-danger-color);
+    
+    &::before {
+      content: '⚠️';
+      color: var(--w-danger-color);
+    }
+  }
+
+  // Skeleton shimmer for loading state
+  .list-card__skeleton-item {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-md);
+    padding: var(--w-spacing-md);
+    border-radius: var(--w-border-radius-md);
+    background-color: var(--w-background-color);
+    border: 1px solid var(--w-border-color);
+
+    .list-card__skeleton-avatar,
+    .list-card__skeleton-poster {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--w-border-radius-circle);
+      @include shimmer-animation;
+      flex-shrink: 0;
+    }
+
+    .list-card__skeleton-poster {
+      height: 72px;
+      border-radius: var(--w-border-radius-sm);
+    }
+
+    .list-card__skeleton-rank {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--w-border-radius-circle);
+      @include shimmer-animation;
+      flex-shrink: 0;
+    }
+
+    .list-card__skeleton-content {
+      @include flex(column, center, flex-start);
+      gap: var(--w-spacing-xs);
+      flex: 1;
+    }
+
+    .list-card__skeleton-line {
+      height: 16px;
+      @include shimmer-animation;
+      border-radius: var(--w-border-radius-sm);
+
+      &--title {
+        width: 80%;
+      }
+
+      &--subtitle {
+        width: 60%;
+      }
+    }
+  }
+}
+
+// Item Link Component (for Dashboard.jsx)
+.item-link {
+  @include flex(row, flex-start, center);
+  gap: var(--w-spacing-md);
+  text-decoration: none;
+  color: inherit;
+  @include transition-ease();
+  @include focus-visible;
+
+  &:hover {
+    .item-link__title {
+      color: var(--w-primary-color);
+    }
+
+    .item-link__avatar,
+    .item-link__poster {
+      transform: scale(1.05);
+      @include shadow(md);
+    }
+  }
+
+  &__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--w-border-radius-circle);
+    object-fit: cover;
+    flex-shrink: 0;
+    @include transition-ease();
+
+    @include breakpoint(mobile) {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  &__poster {
+    width: 48px;
+    height: 72px;
+    border-radius: var(--w-border-radius-sm);
+    object-fit: cover;
+    flex-shrink: 0;
+    @include shadow(sm);
+    @include transition-ease();
+
+    @include breakpoint(mobile) {
+      width: 40px;
+      height: 60px;
+    }
+  }
+
+  &__content {
+    @include flex(column, center, flex-start);
+    gap: var(--w-spacing-xs);
+    flex: 1;
+    min-width: 0; // Fix text overflow
+  }
+
+  &__title {
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-medium);
+    color: var(--w-text-color);
+    @include text-truncate(1);
+    @include transition-ease();
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-sm);
+    }
+  }
+
+  &__subtitle {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-xs);
+    font-size: var(--w-font-size-sm);
+    color: var(--w-secondary-color);
+    opacity: 0.9;
+
+    svg {
+      font-size: var(--w-font-size-md);
+      transition: transform var(--w-motion-duration-fast);
+    }
+    
+    .item-link:hover & svg {
+      transform: scale(1.1);
+    }
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-xs);
+    }
+  }
+}
+
+// Period Selector Component (for Dashboard.jsx trending list)
+.period-selector {
+  @include flex(row, flex-start, center);
+  gap: var(--w-spacing-xs);
+  background: var(--w-glass-tint-light);
+  backdrop-filter: blur(var(--w-blur-sm));
+  padding: var(--w-spacing-xs);
+  border-radius: var(--w-border-radius-md);
+  border: 1px solid var(--w-glass-border-light);
+
+  &__btn {
+    @include flex(row, center, center);
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: var(--w-border-radius);
+    background-color: transparent;
+    color: var(--w-text-color);
+    cursor: pointer;
+    font-size: var(--w-font-size-md);
+    opacity: 0.7;
+    @include transition(
+      all,
+      var(--w-motion-duration-fast),
+      var(--w-motion-easing-spring)
+    );
+    @include focus-visible;
+
+    &:hover {
+      background: var(--w-glass-tint-medium);
+      color: var(--w-text-color);
+      opacity: 1;
+      transform: scale(1.05);
+    }
+
+    &--active {
+      background: linear-gradient(
+        135deg,
+        var(--w-primary-color),
+        rgba(var(--w-primary-color-rgb), 0.8)
+      );
+      color: var(--w-white);
+      opacity: 1;
+      box-shadow: 
+        0 2px 8px rgba(var(--w-primary-color-rgb), 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          var(--w-primary-color-hover),
+          var(--w-primary-color)
+        );
+      }
+    }
+
+    @include breakpoint(mobile) {
+      width: 32px;
+      height: 32px;
+      font-size: var(--w-font-size-sm);
+    }
+  }
+
+  @include breakpoint(mobile) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+// Light Theme Specific Overrides
+[data-ww-theme="light"] {
+  .list-card {
+    &__subtitle {
+      color: var(--w-secondary-color);
+      opacity: 0.85;
+    }
+    
+    &__meta {
+      color: var(--w-secondary-color);
+      opacity: 0.85;
+    }
+  }
+  
+  .item-link {
+    &__subtitle {
+      color: var(--w-secondary-color);
+      opacity: 0.85;
+    }
+  }
+  
+  .period-selector {
+    &__btn {
+      opacity: 0.75;
+      
+      &:hover {
+        opacity: 1;
+      }
+      
+      &--active {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+// Dark Theme Specific Overrides
+[data-ww-theme="dark"] {
+  .list-card {
+    background-color: var(--w-glass-tint-heavy);
+    border-color: var(--w-glass-border-light);
+    
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 2px 6px rgba(0, 0, 0, 0.2),
+      inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    
+    &:hover {
+      box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.08);
+    }
+    
+    &__header {
+      border-bottom-color: var(--w-glass-border-light);
+    }
+    
+    &__item {
+      background: rgba(var(--w-background-color-rgb), 0.3);
+      border-color: var(--w-glass-border-light);
+      
+      &:hover {
+        background: var(--w-glass-tint-medium);
+        box-shadow: 
+          0 4px 12px rgba(0, 0, 0, 0.3),
+          inset 0 1px 2px rgba(255, 255, 255, 0.05);
+      }
+    }
+  }
+  
+  .period-selector {
+    background: rgba(var(--w-background-color-rgb), 0.3);
+    border-color: var(--w-glass-border-light);
+    
+    &__btn {
+      &:hover {
+        background: var(--w-glass-tint-medium);
+      }
+      
+      &--active {
+        box-shadow: 
+          0 2px 8px rgba(var(--w-primary-color-rgb), 0.4),
+          inset 0 1px 2px rgba(255, 255, 255, 0.15);
+      }
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .list-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  .period-selector {
+    display: none;
+  }
+}
+
+// Accessibility improvements
+@media (prefers-reduced-motion: reduce) {
+  .list-card,
+  .list-card__item,
+  .item-link,
+  .period-selector__btn {
+    transition: none;
+    animation: none;
+  }
+
+  .list-card__item:hover {
+    transform: none;
+  }
+
+  .item-link:hover {
+    .item-link__avatar,
+    .item-link__poster {
+      transform: none;
+    }
+  }
+
+  .list-card--trending .list-card__icon {
+    animation: none;
+  }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+  .list-card {
+    border-width: 2px;
+  }
+
+  .list-card__item {
+    border-width: 2px;
+  }
+
+  .list-card__rank {
+    border: 2px solid var(--w-text-color);
+  }
+}

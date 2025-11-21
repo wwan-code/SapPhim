@@ -1,0 +1,552 @@
+// _error-boundary.scss
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.error-boundary {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--w-spacing-lg);
+  background-color: var(--w-background-color);
+
+  // ============= LEVEL VARIANTS =============
+  
+  &--page {
+    min-height: calc(100vh - var(--w-header-height-desktop) - var(--w-footer-height));
+    
+    @include breakpoint(mobile) {
+      min-height: calc(100vh - var(--w-header-height-mobile));
+    }
+  }
+
+  &--section {
+    min-height: 300px;
+    border: var(--w-border-width) var(--w-border-style) var(--w-border-color);
+    border-radius: var(--w-border-radius-lg);
+  }
+
+  &--component {
+    min-height: 200px;
+    padding: var(--w-spacing-md);
+  }
+
+  // ============= CONTAINER =============
+  
+  &__container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-width: 800px;
+    width: 100%;
+    padding: var(--w-spacing-xxl);
+    animation: fadeInScale 0.3s ease-out;
+
+    @include breakpoint(mobile) {
+      padding: var(--w-spacing-lg);
+    }
+  }
+
+  // ============= ICON =============
+  
+  &__icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: var(--w-spacing-xl);
+    color: var(--w-danger-color);
+    animation: pulse 2s ease-in-out infinite;
+
+    svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 4px 8px rgba(var(--w-danger-color-rgb), 0.3));
+    }
+
+    @include breakpoint(mobile) {
+      width: 64px;
+      height: 64px;
+      margin-bottom: var(--w-spacing-lg);
+    }
+
+    .error-boundary--component & {
+      width: 48px;
+      height: 48px;
+      margin-bottom: var(--w-spacing-md);
+    }
+  }
+
+  // ============= CONTENT =============
+  
+  &__title {
+    font-size: var(--w-font-size-h1);
+    font-weight: var(--w-font-weight-bold);
+    color: var(--w-text-color);
+    margin: 0 0 var(--w-spacing-md);
+    line-height: 1.2;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-h2);
+    }
+
+    .error-boundary--component & {
+      font-size: var(--w-font-size-h3);
+    }
+  }
+
+  &__message {
+    font-size: var(--w-font-size-lg);
+    color: var(--w-text-color-light);
+    margin: 0 0 var(--w-spacing-lg);
+    line-height: 1.6;
+    max-width: 600px;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-md);
+    }
+
+    .error-boundary--component & {
+      font-size: var(--w-font-size-sm);
+    }
+  }
+
+  // ============= DETAILS =============
+  
+  &__details {
+    width: 100%;
+    max-width: 700px;
+    margin: var(--w-spacing-lg) 0;
+    text-align: left;
+
+    summary {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--w-spacing-xs);
+      padding: var(--w-spacing-sm) var(--w-spacing-md);
+      font-size: var(--w-font-size-sm);
+      font-weight: var(--w-font-weight-medium);
+      color: var(--w-text-color);
+      background-color: var(--w-background-color-light);
+      border: var(--w-border-width) var(--w-border-style) var(--w-border-color);
+      border-radius: var(--w-border-radius);
+      cursor: pointer;
+      user-select: none;
+      @include transition-ease(0.2s);
+      @include focus-visible;
+
+      &:hover {
+        background-color: var(--w-background-color-dark);
+        border-color: var(--w-border-color-dark);
+      }
+
+      &::marker,
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      &::before {
+        content: '▶';
+        display: inline-block;
+        font-size: 0.8em;
+        @include transition-ease(0.2s, transform);
+      }
+    }
+
+    &[open] summary::before {
+      transform: rotate(90deg);
+    }
+  }
+
+  &__code {
+    margin-top: var(--w-spacing-md);
+    padding: var(--w-spacing-md);
+    background-color: var(--w-background-color-dark);
+    border: var(--w-border-width) var(--w-border-style) var(--w-border-color);
+    border-radius: var(--w-border-radius);
+    overflow: hidden;
+
+    p {
+      margin: var(--w-spacing-xs) 0;
+      font-size: var(--w-font-size-sm);
+      color: var(--w-text-color);
+
+      strong {
+        color: var(--w-danger-color);
+        font-weight: var(--w-font-weight-semibold);
+      }
+    }
+
+    pre {
+      margin: var(--w-spacing-sm) 0 0;
+      padding: var(--w-spacing-sm);
+      background-color: var(--w-background-color);
+      border-radius: var(--w-border-radius-sm);
+      overflow-x: auto;
+      max-height: 300px;
+      overflow-y: auto;
+
+      // Custom scrollbar
+      &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: var(--w-background-color-light);
+        border-radius: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: var(--w-border-color);
+        border-radius: 4px;
+
+        &:hover {
+          background: var(--w-border-color-dark);
+        }
+      }
+
+      code {
+        display: block;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: var(--w-font-size-xs);
+        line-height: 1.5;
+        color: var(--w-text-color-light);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    }
+  }
+
+  // ============= ACTIONS =============
+  
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--w-spacing-md);
+    flex-wrap: wrap;
+    margin-top: var(--w-spacing-xl);
+    width: 100%;
+
+    @include breakpoint(mobile) {
+      flex-direction: column;
+      gap: var(--w-spacing-sm);
+      max-width: 300px;
+    }
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--w-spacing-xs);
+    padding: var(--w-spacing-sm) var(--w-spacing-xl);
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-medium);
+    line-height: 1.5;
+    border-radius: var(--w-border-radius-lg);
+    border: var(--w-border-width) var(--w-border-style);
+    cursor: pointer;
+    white-space: nowrap;
+    @include transition-ease(0.2s);
+    @include focus-visible;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    @include breakpoint(mobile) {
+      width: 100%;
+      padding: var(--w-spacing-sm) var(--w-spacing-lg);
+    }
+
+    // Primary button
+    &--primary {
+      background-color: var(--w-primary-color);
+      color: var(--w-text-color-light);
+      border-color: var(--w-primary-color);
+
+      &:hover:not(:disabled) {
+        background-color: var(--w-primary-color-hover);
+        border-color: var(--w-primary-color-hover);
+      }
+    }
+
+    // Secondary button
+    &--secondary {
+      background-color: transparent;
+      color: var(--w-text-color);
+      border-color: var(--w-border-color);
+
+      &:hover:not(:disabled) {
+        background-color: var(--w-background-color-light);
+        border-color: var(--w-border-color-dark);
+      }
+    }
+  }
+
+  // ============= WARNING MESSAGE =============
+  
+  &__warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--w-spacing-xs);
+    margin-top: var(--w-spacing-md);
+    padding: var(--w-spacing-sm) var(--w-spacing-md);
+    background-color: rgba(var(--w-warning-color-rgb), 0.1);
+    border: var(--w-border-width) var(--w-border-style) var(--w-warning-color);
+    border-radius: var(--w-border-radius);
+    font-size: var(--w-font-size-sm);
+    color: var(--w-text-color);
+
+    &::before {
+      content: '⚠️';
+      font-size: 1.2em;
+    }
+  }
+
+  // ============= SPIN ANIMATION FOR RETRY ICON =============
+  
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  // ============= ACCESSIBILITY =============
+  
+  @media (prefers-reduced-motion: reduce) {
+    &__container {
+      animation: none;
+    }
+
+    &__icon {
+      animation: none;
+    }
+
+    &__btn,
+    .spin {
+      animation: none;
+      transition: none;
+    }
+  }
+
+  // ============= DARK MODE =============
+  
+  [data-ww-theme="dark"] & {
+    &__icon svg {
+      filter: drop-shadow(0 4px 12px rgba(var(--w-danger-color-rgb), 0.5));
+    }
+
+    &__details summary {
+      background-color: var(--w-background-color-dark);
+
+      &:hover {
+        background-color: var(--w-input-bg);
+      }
+    }
+
+    &__code {
+      background-color: var(--w-input-bg);
+
+      pre {
+        background-color: var(--w-background-color-dark);
+      }
+    }
+  }
+
+  // ============= PRINT STYLES =============
+  
+  @media print {
+    &__actions {
+      display: none;
+    }
+
+    &__details {
+      &[open] {
+        summary {
+          display: none;
+        }
+      }
+    }
+
+    &__icon {
+      animation: none;
+      filter: grayscale(1);
+    }
+  }
+}
+
+// ============= GLOBAL UTILITY =============
+
+// Prevent body scroll when error is fullscreen
+.w-body--no-scroll {
+  overflow: hidden;
+  height: 100vh;
+}
+
+// Error boundary overlay (for critical errors)
+.error-boundary-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: var(--w-zindex-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--w-spacing-lg);
+  animation: fadeInScale 0.3s ease-out;
+
+  .error-boundary {
+    background-color: var(--w-background-color);
+    border-radius: var(--w-border-radius-xl);
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+    @include breakpoint(mobile) {
+      max-width: 100%;
+      border-radius: var(--w-border-radius-lg);
+    }
+  }
+}
+
+// Toast-like error notification
+.error-boundary-toast {
+  position: fixed;
+  bottom: var(--w-spacing-xl);
+  right: var(--w-spacing-xl);
+  z-index: var(--w-zindex-toast);
+  max-width: 450px;
+  animation: slideInFromRight 0.3s ease-out;
+
+  .error-boundary {
+    min-height: auto;
+    padding: var(--w-spacing-md);
+    box-shadow: var(--w-box-shadow-lg);
+    border-radius: var(--w-border-radius-lg);
+  }
+
+  .error-boundary__container {
+    padding: 0;
+    text-align: left;
+  }
+
+  .error-boundary__icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: var(--w-spacing-sm);
+    align-self: flex-start;
+  }
+
+  .error-boundary__title {
+    font-size: var(--w-font-size-lg);
+    margin-bottom: var(--w-spacing-xs);
+  }
+
+  .error-boundary__message {
+    font-size: var(--w-font-size-sm);
+    margin-bottom: var(--w-spacing-sm);
+  }
+
+  .error-boundary__actions {
+    justify-content: flex-start;
+    margin-top: var(--w-spacing-md);
+  }
+
+  @include breakpoint(mobile) {
+    bottom: var(--w-spacing-md);
+    right: var(--w-spacing-md);
+    left: var(--w-spacing-md);
+    max-width: none;
+  }
+}
+
+// Inline error (minimal version)
+.error-boundary-inline {
+  .error-boundary {
+    min-height: auto;
+    padding: var(--w-spacing-md);
+    border: var(--w-border-width) var(--w-border-style) var(--w-danger-color);
+    border-left-width: 4px;
+    background-color: rgba(var(--w-danger-color-rgb), 0.05);
+  }
+
+  .error-boundary__container {
+    padding: 0;
+    flex-direction: row;
+    text-align: left;
+    gap: var(--w-spacing-md);
+  }
+
+  .error-boundary__icon {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+    animation: none;
+  }
+
+  .error-boundary__title {
+    font-size: var(--w-font-size-md);
+    margin-bottom: var(--w-spacing-xs);
+  }
+
+  .error-boundary__message {
+    font-size: var(--w-font-size-sm);
+    margin-bottom: 0;
+  }
+
+  .error-boundary__actions {
+    margin-top: var(--w-spacing-sm);
+    justify-content: flex-start;
+  }
+
+  .error-boundary__btn {
+    padding: var(--w-spacing-xs) var(--w-spacing-md);
+    font-size: var(--w-font-size-sm);
+  }
+}
+
+// Loading state for error retry
+.error-boundary-loading {
+  .error-boundary__btn {
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 16px;
+      height: 16px;
+      margin-top: -8px;
+      margin-left: -8px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    svg,
+    span {
+      opacity: 0;
+    }
+  }
+}

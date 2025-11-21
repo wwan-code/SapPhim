@@ -1,0 +1,433 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(var(--w-blur-md));
+  }
+}
+
+@keyframes modalDialogScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalContentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalSheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.w-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--w-zindex-modal);
+  @include flex(row, center, center);
+  padding: var(--w-spacing-md);
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  &--open {
+    pointer-events: auto;
+  }
+
+  &__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--w-zindex-modal) - 1);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--w-background-color-rgb), 0.4) 0%,
+      rgba(var(--w-background-color-rgb), 0.6) 100%
+    );
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    opacity: 0;
+    transition: 
+      opacity var(--w-motion-duration-medium) var(--w-motion-easing-elegant),
+      backdrop-filter var(--w-motion-duration-medium) var(--w-motion-easing-elegant);
+    will-change: opacity, backdrop-filter;
+
+    &--visible {
+      opacity: 1;
+      backdrop-filter: blur(var(--w-blur-md)) saturate(120%);
+      -webkit-backdrop-filter: blur(var(--w-blur-md)) saturate(120%);
+      animation: modalBackdropFadeIn var(--w-motion-duration-medium) var(--w-motion-easing-elegant) forwards;
+    }
+
+    &--closing {
+      opacity: 0;
+      backdrop-filter: blur(0);
+      -webkit-backdrop-filter: blur(0);
+      transition-timing-function: var(--w-motion-easing-snappy);
+    }
+  }
+
+  &__dialog {
+    position: relative;
+    z-index: var(--w-zindex-modal);
+    width: 100%;
+    max-height: 90vh;
+    @include flex(column, flex-start, stretch);
+    
+    @include liquid-glass-complete(
+      $opacity: var(--w-glass-opacity-heavy),
+      $blur: var(--w-blur-lg),
+      $depth: 'elevated',
+      $add-highlight: false,
+      $add-tint: false
+    );
+    
+    border-radius: var(--w-border-radius-xl);
+    overflow: hidden;
+    
+    box-shadow: 
+      var(--w-glass-shadow-ambient),
+      var(--w-glass-shadow-specular),
+      0 24px 48px -12px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+
+    opacity: 0;
+    transform: scale(0.92) translateY(-10px);
+    transition: 
+      opacity var(--w-motion-duration-medium) var(--w-motion-easing-spring),
+      transform var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+    will-change: opacity, transform;
+
+    &--visible {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      animation: modalDialogScaleIn var(--w-motion-duration-medium) var(--w-motion-easing-spring) forwards;
+    }
+
+    &--closing {
+      opacity: 0;
+      transform: scale(0.96) translateY(-8px);
+      transition-timing-function: var(--w-motion-easing-snappy);
+      transition-duration: var(--w-motion-duration-fast);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  &__content {
+    @include flex(column, flex-start, stretch);
+    height: 100%;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: 
+      opacity var(--w-motion-duration-fast) var(--w-motion-easing-elegant),
+      transform var(--w-motion-duration-fast) var(--w-motion-easing-elegant);
+    will-change: opacity, transform;
+
+    &--visible {
+      opacity: 1;
+      transform: translateY(0);
+      animation: modalContentFadeIn var(--w-motion-duration-fast) var(--w-motion-easing-elegant) forwards;
+    }
+
+    &--closing {
+      opacity: 0;
+      transition-duration: calc(var(--w-motion-duration-fast) * 0.7);
+    }
+  }
+
+  &__header {
+    @include flex(row, space-between, center);
+    gap: var(--w-spacing-md);
+    padding: var(--w-spacing-lg) var(--w-spacing-xl);
+    flex-shrink: 0;
+    
+    background: linear-gradient(
+      180deg,
+      rgba(var(--w-primary-color-rgb), 0.05) 0%,
+      transparent 100%
+    );
+    border-bottom: 1px solid rgba(var(--w-text-color-rgb), 0.08);
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.2) 50%,
+        transparent 100%
+      );
+    }
+  }
+
+  &__title {
+    font-size: var(--w-font-size-xl);
+    font-weight: var(--w-font-weight-bold);
+    color: var(--w-text-color);
+    margin: 0;
+    line-height: 1.3;
+    @include text-truncate(2);
+  }
+
+  &__close {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(var(--w-background-color-rgb), 0.1);
+    color: var(--w-text-color-light);
+    cursor: pointer;
+    @include flex(row, center, center);
+    @include liquid-motion(all, var(--w-motion-duration-fast));
+    position: relative;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--w-glass-reflection);
+      opacity: 0;
+      transition: opacity var(--w-motion-duration-fast);
+    }
+
+    &:hover:not(:disabled) {
+      background-color: rgba(var(--w-danger-color-rgb), 0.15);
+      color: var(--w-danger-color);
+      transform: scale(1.08) rotate(90deg);
+      box-shadow: 0 4px 12px rgba(var(--w-danger-color-rgb), 0.2);
+      
+      &::before {
+        opacity: 0.3;
+      }
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.95) rotate(90deg);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--w-primary-color);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__close-icon {
+    font-size: var(--w-font-size-lg);
+    display: block;
+  }
+
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--w-spacing-xl);
+    color: var(--w-text-color);
+    line-height: 1.6;
+
+    @include sidebar-scroll-style;
+
+    &::before,
+    &::after {
+      content: '';
+      position: sticky;
+      left: 0;
+      right: 0;
+      height: 24px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    &::before {
+      top: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(var(--w-background-color-rgb), 0.95) 0%,
+        transparent 100%
+      );
+    }
+
+    &::after {
+      bottom: 0;
+      background: linear-gradient(
+        0deg,
+        rgba(var(--w-background-color-rgb), 0.95) 0%,
+        transparent 100%
+      );
+    }
+
+    > *:first-child {
+      margin-top: 0;
+    }
+
+    > *:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__footer {
+    @include flex(row, flex-end, center);
+    gap: var(--w-spacing-sm);
+    padding: var(--w-spacing-lg) var(--w-spacing-xl);
+    flex-shrink: 0;
+    border-top: 1px solid rgba(var(--w-text-color-rgb), 0.08);
+    background: linear-gradient(
+      0deg,
+      rgba(var(--w-background-color-rgb), 0.05) 0%,
+      transparent 100%
+    );
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%
+      );
+    }
+  }
+
+  &--sm .w-modal__dialog { max-width: 400px; }
+  &--md .w-modal__dialog { max-width: 600px; }
+  &--lg .w-modal__dialog { max-width: 900px; }
+  &--xl .w-modal__dialog { max-width: 1200px; }
+  
+  &--fullscreen {
+    padding: 0;
+    
+    .w-modal__dialog {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      max-height: none;
+      border-radius: 0;
+    }
+  }
+
+  &--sheet {
+    align-items: flex-end;
+    padding: 0;
+
+    .w-modal__dialog {
+      width: 100%;
+      max-width: none;
+      max-height: 85vh;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      transform: translateY(100%);
+      
+      &--visible {
+        transform: translateY(0);
+        animation: modalSheetSlideUp var(--w-motion-duration-medium) var(--w-motion-easing-spring) forwards;
+      }
+
+      &--closing {
+        transform: translateY(100%);
+      }
+    }
+
+    .w-modal__header::before {
+      content: '';
+      position: absolute;
+      top: var(--w-spacing-sm);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48px;
+      height: 4px;
+      border-radius: 2px;
+      background-color: rgba(var(--w-text-color-rgb), 0.2);
+    }
+
+    .w-modal__header {
+      padding-top: calc(var(--w-spacing-lg) + var(--w-spacing-md));
+    }
+  }
+
+  @include breakpoint(md) {
+    padding: var(--w-spacing-sm);
+
+    &__dialog {
+      max-height: 95vh;
+    }
+
+    &__header,
+    &__body,
+    &__footer {
+      padding-left: var(--w-spacing-lg);
+      padding-right: var(--w-spacing-lg);
+    }
+
+    &__title {
+      font-size: var(--w-font-size-lg);
+    }
+  }
+
+  @include breakpoint(sm) {
+    &:not(.w-modal--fullscreen) {
+      align-items: flex-end;
+      padding: 0;
+
+      .w-modal__dialog {
+        width: 100%;
+        max-width: none;
+        max-height: 90vh;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+
+      .w-modal__header,
+      .w-modal__body,
+      .w-modal__footer {
+        padding-left: var(--w-spacing-md);
+        padding-right: var(--w-spacing-md);
+      }
+    }
+  }
+}
+

@@ -1,0 +1,251 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.profile-tabs {
+  position: relative;
+  padding: var(--w-spacing-md) var(--w-spacing-sm);
+  
+  // Mobile: Horizontal scroll container
+  @include breakpoint(mobile) {
+    padding: var(--w-spacing-sm);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-xs);
+    position: relative;
+
+    // Mobile: Horizontal layout with no wrap
+    @include breakpoint(mobile) {
+      flex-direction: row;
+      gap: var(--w-spacing-sm);
+      flex-wrap: nowrap;
+      min-width: min-content;
+    }
+
+    // Warping state: container slightly expands during transition
+    &--warping {
+      transform: scale(1.005);
+      @include liquid-motion(transform, var(--w-motion-duration-fast));
+    }
+
+    // Settling state: container returns to normal with slight overshoot
+    &--settling {
+      transform: scale(1);
+      transition: transform var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+    }
+  }
+
+  // 🌊 ANIMATED INDICATOR PILL
+  &__tab-indicator-pill {
+    position: absolute;
+    border-radius: var(--w-border-radius-lg);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    backface-visibility: hidden;
+    perspective: 1000px;
+    will-change: transform, width, opacity;
+    @include tab-glass-pill;
+    @include tab-indicator-glide(1.4, 350ms);
+  }
+
+  &__item {
+    position: relative;
+    padding: var(--w-spacing-sm) var(--w-spacing-md);
+    cursor: pointer;
+    border-radius: var(--w-border-radius-lg);
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-sm);
+    color: var(--w-text-color-light);
+    font-weight: var(--w-font-weight-medium);
+    font-size: var(--w-font-size-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    overflow: hidden;
+    isolation: isolate;
+    @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 1;
+
+    // Mobile: Compact layout
+    @include breakpoint(mobile) {
+      padding: var(--w-spacing-xs) var(--w-spacing-sm);
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 4rem;
+      white-space: nowrap;
+    }
+
+    // Hover state
+    &:hover:not(.is-active) {
+      color: var(--w-text-color);
+      background: rgba(var(--w-background-color-rgb), 0.3);
+
+      .profile-tabs__icon {
+        transform: scale(1.1);
+        color: var(--w-primary-color);
+      }
+    }
+
+    // Active state - let indicator pill show through
+    &.is-active {
+      color: var(--w-primary-color);
+      font-weight: var(--w-font-weight-semibold);
+
+      .profile-tabs__icon {
+        transform: scale(1.15);
+        color: var(--w-primary-color);
+        filter: drop-shadow(0 2px 4px rgba(var(--w-primary-color-rgb), 0.4));
+      }
+
+      .profile-tabs__label {
+        text-shadow: 0 0 12px rgba(var(--w-primary-color-rgb), 0.3);
+      }
+    }
+    // Active tap/press effect
+    &:active {
+      transform: scale(0.98);
+      
+      @include breakpoint(mobile) {
+        transform: scale(0.96);
+      }
+    }
+
+    // Focus visible for keyboard navigation
+    @include focus-visible();
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+      
+      &:hover:not(.is-active),
+      &.is-active,
+      &:active {
+        transform: none;
+      }
+    }
+  }
+
+  &__icon {
+    font-size: var(--w-font-size-lg);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+    @include liquid-motion(all);
+    position: relative;
+    z-index: 2;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-xl);
+    }
+  }
+
+  &__label {
+    font-size: var(--w-font-size-sm);
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    position: relative;
+    z-index: 2;
+    @include liquid-motion(all);
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-xs);
+      text-align: center;
+    }
+  }
+
+  // Gradient fade overlay for mobile scroll hint
+  @include breakpoint(mobile) {
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1.5rem;
+      pointer-events: none;
+      z-index: 10;
+      @include liquid-motion(opacity);
+    }
+
+    &::before {
+      left: 0;
+      background: linear-gradient(
+        to right,
+        var(--w-background-color-light),
+        transparent
+      );
+    }
+
+    &::after {
+      right: 0;
+      background: linear-gradient(
+        to left,
+        var(--w-background-color-light),
+        transparent
+      );
+    }
+  }
+
+  // Dark mode adjustments
+  [data-ww-theme="dark"] & {
+    &__tab-indicator-pill {
+      background: linear-gradient(
+        135deg,
+        rgba(var(--w-primary-color-rgb), 0.2),
+        rgba(var(--w-primary-color-rgb), 0.12)
+      );
+      box-shadow: 
+        0 4px 20px -4px rgba(var(--w-primary-color-rgb), 0.4),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    }
+
+    @include breakpoint(mobile) {
+      &::before {
+        background: linear-gradient(
+          to right,
+          var(--w-background-color-light),
+          transparent
+        );
+      }
+
+      &::after {
+        background: linear-gradient(
+          to left,
+          var(--w-background-color-light),
+          transparent
+        );
+      }
+    }
+  }
+
+  // High contrast mode
+  @media (prefers-contrast: high) {
+    &__tab-indicator-pill {
+      background: var(--w-primary-color);
+      border: 2px solid currentColor;
+    }
+
+    &__item {
+      border: 2px solid currentColor;
+
+      &.is-active {
+        background: transparent;
+        color: var(--w-primary-color);
+      }
+    }
+  }
+}

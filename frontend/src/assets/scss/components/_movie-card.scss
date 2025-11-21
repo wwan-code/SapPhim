@@ -1,0 +1,342 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.movie-card {
+  display: block;
+  text-decoration: none;
+  color: var(--w-text-color);
+  background-color: transparent;
+  border-radius: var(--w-border-radius-lg);
+  overflow: visible;
+  position: relative;
+  @include liquid-motion(transform);
+  will-change: transform;
+
+  // Hover & interaction states
+  &:hover,
+  &--hovered {
+    transform: translateY(-8px);
+
+    .movie-card__cover-wrap {
+      @include liquid-glass-shadow('deep');
+    }
+
+    .movie-card__overlay {
+      opacity: 1;
+      backdrop-filter: blur(8px);
+    }
+
+    .movie-card__image {
+      transform: scale(1.08);
+    }
+
+    .movie-card__title {
+      color: var(--w-primary-color);
+    }
+
+    .movie-card__play-button {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+  }
+
+  // Active/pressed state
+  &:active {
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  // Focus-visible for accessibility
+  &:focus-visible {
+    @include focus-visible;
+    outline-offset: 4px;
+  }
+
+  // Cover container
+  &__cover-wrap {
+    position: relative;
+    padding-top: 150%;
+    aspect-ratio: 2 / 3;
+    background-color: var(--w-background-color-dark);
+    border-radius: var(--w-border-radius-lg);
+    overflow: hidden;
+    @include liquid-glass-shadow('medium');
+    @include liquid-motion(box-shadow, var(--w-motion-duration-fast));
+
+    .movie-card--horizontal & {
+      padding-top: 56.25%;
+      aspect-ratio: 16 / 9;
+    }
+  }
+
+  // Main image
+  &__image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    @include liquid-motion(transform, var(--w-motion-duration-medium));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+
+    &--loaded {
+      opacity: 1;
+    }
+  }
+
+  // Loading shimmer
+  &__loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    @include shimmer-animation;
+    z-index: 1;
+  }
+
+  // Play overlay
+  &__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    @include liquid-glass-base(var(--w-glass-opacity-heavy), var(--w-blur-md));
+    @include flex(row, center, center);
+    opacity: 0;
+    @include liquid-motion(opacity);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  // Play button with ripple effect
+  &__play-button {
+    @include flex(row, center, center);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    @include liquid-glass-base(var(--w-glass-opacity-medium), var(--w-blur-sm));
+    @include liquid-glass-border(0.3);
+    @include specular-highlight(0.5);
+    transform: scale(0.8) rotate(-90deg);
+    opacity: 0;
+    @include liquid-motion(all, var(--w-motion-duration-medium), var(--w-motion-easing-spring));
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+    .fa-play {
+      color: #fff;
+      font-size: 1.5rem;
+      margin-left: 4px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+  }
+
+  // Quality badge
+  &__quality-badge {
+    position: absolute;
+    top: var(--w-spacing-sm);
+    right: var(--w-spacing-sm);
+    padding: 4px 10px;
+    border-radius: var(--w-border-radius);
+    font-size: var(--w-font-size-xs);
+    font-weight: var(--w-font-weight-bold);
+    text-transform: uppercase;
+    @include liquid-glass-base(var(--w-glass-opacity-heavy), var(--w-blur-sm));
+    @include liquid-glass-border(0.25);
+    color: #fff;
+    z-index: 3;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    animation: fadeInDown 0.4s var(--w-motion-easing-elegant) both;
+    animation-delay: 0.1s;
+  }
+
+  // Info section
+  &__info {
+    padding: var(--w-spacing-sm) 0;
+  }
+
+  // Title
+  &__title {
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-medium);
+    margin: 0 0 var(--w-spacing-xs);
+    @include text-truncate(2);
+    @include liquid-motion(color);
+    line-height: 1.4;
+  }
+
+  // Metadata row
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--w-spacing-sm);
+    font-size: var(--w-font-size-sm);
+    color: var(--w-text-color-light);
+    flex-wrap: wrap;
+  }
+
+  &__year,
+  &__category,
+  &__views {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__views {
+    .fa-eye {
+      font-size: 0.875em;
+      opacity: 0.7;
+    }
+  }
+
+  // Error state
+  &--error {
+    .movie-card__image {
+      opacity: 0.6;
+      filter: grayscale(1);
+    }
+  }
+
+  // Mini version for episode lists
+  &--mini {
+    display: flex;
+    gap: var(--w-spacing-md);
+    transform: none;
+
+    &:hover,
+    &.movie-card--hovered {
+      transform: translateX(4px);
+
+      .movie-card__image {
+        transform: scale(1.05);
+      }
+    }
+
+    .movie-card__cover-wrap {
+      flex-shrink: 0;
+      width: 120px;
+      padding-top: 67.5%;
+      height: 68px;
+    }
+
+    .movie-card__info {
+      padding: 0;
+      align-self: center;
+      flex: 1;
+    }
+
+    .movie-card__title {
+      font-size: var(--w-font-size-sm);
+      @include text-truncate(1);
+    }
+
+    .movie-card__meta {
+      font-size: var(--w-font-size-xs);
+    }
+
+    .movie-card__quality-badge {
+      top: 4px;
+      right: 4px;
+      padding: 2px 6px;
+      font-size: 10px;
+    }
+
+    .movie-card__play-button {
+      width: 40px;
+      height: 40px;
+
+      .fa-play {
+        font-size: 1rem;
+      }
+    }
+  }
+
+  // Responsive adjustments
+  @include breakpoint(mobile) {
+    &:hover,
+    &--hovered {
+      transform: translateY(-4px);
+    }
+
+    &__cover-wrap {
+      border-radius: var(--w-border-radius);
+    }
+
+    &__quality-badge {
+      font-size: 10px;
+      padding: 3px 8px;
+    }
+
+    &__play-button {
+      width: 56px;
+      height: 56px;
+
+      .fa-play {
+        font-size: 1.25rem;
+      }
+    }
+
+    &--mini {
+      .movie-card__cover-wrap {
+        width: 100px;
+        height: 56px;
+      }
+    }
+  }
+
+  // Touch device optimizations
+  @media (hover: none) and (pointer: coarse) {
+    &:hover {
+      transform: none;
+    }
+
+    &--hovered {
+      transform: scale(0.98);
+    }
+
+    &__play-button {
+      opacity: 0.8;
+      transform: scale(0.9) rotate(0deg);
+    }
+  }
+
+  // Reduced motion
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    animation: none;
+
+    &:hover,
+    &--hovered {
+      transform: none;
+    }
+
+    .movie-card__image,
+    .movie-card__overlay,
+    .movie-card__play-button,
+    .movie-card__quality-badge {
+      transition: none;
+      animation: none;
+    }
+  }
+
+  // High contrast mode
+  @media (prefers-contrast: high) {
+    &__overlay {
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    &__quality-badge {
+      background: var(--w-primary-color);
+      border: 2px solid #fff;
+    }
+
+    &:focus-visible {
+      outline-width: 3px;
+    }
+  }
+}

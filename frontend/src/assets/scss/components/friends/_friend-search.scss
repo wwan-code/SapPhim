@@ -1,0 +1,247 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.friend-search {
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-lg);
+    animation: fadeInUp 0.4s ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+
+    &__input-wrapper {
+        position: relative;
+        z-index: 1;
+    }
+
+    &__input-group {
+        position: relative;
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-sm);
+        padding: var(--w-spacing-sm) var(--w-spacing-md);
+        border-radius: var(--w-border-radius-lg);
+        @include transition(all, var(--w-motion-duration-medium), var(--w-motion-easing-spring));
+        overflow: hidden;
+        @include liquid-glass-base($blur: var(--w-blur-sm), $opacity: var(--w-glass-opacity-medium));
+        @include liquid-glass-border(0.12);
+
+        @include breakpoint(mobile) {
+            padding: var(--w-spacing-xs) var(--w-spacing-sm);
+        }
+
+        &:focus-within {
+            box-shadow:
+                0 8px 24px -3px rgba(var(--w-primary-color-rgb), 0.2),
+                0 4px 12px -2px rgba(var(--w-primary-color-rgb), 0.15),
+                inset 0 0 0 2px rgba(var(--w-primary-color-rgb), 0.3);
+            border-color: rgba(var(--w-primary-color-rgb), 0.4);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            &:focus-within {
+                transform: none;
+            }
+        }
+    }
+
+    &__input-icon {
+        font-size: var(--w-font-size-lg);
+        color: var(--w-text-color-light);
+        flex-shrink: 0;
+        @include transition(color, var(--w-motion-duration-fast));
+
+        .friend-search__input-group:focus-within & {
+            color: var(--w-primary-color);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none !important;
+        }
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-md);
+        }
+    }
+
+    &__input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: var(--w-text-color);
+        font-size: var(--w-font-size-md);
+        font-weight: var(--w-font-weight-normal);
+        outline: none;
+        padding: var(--w-spacing-xs) 0;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-sm);
+        }
+
+        @include placeholder {
+            color: var(--w-text-color-light);
+            opacity: 0.6;
+            text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        &:-webkit-autofill {
+            -webkit-box-shadow: 0 0 0 1000px transparent inset;
+            -webkit-text-fill-color: var(--w-text-color);
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    }
+
+    &__clear-btn,
+    &__loading-icon {
+        font-size: var(--w-font-size-md);
+        color: var(--w-text-color-light);
+        flex-shrink: 0;
+        @include transition(all, var(--w-motion-duration-fast));
+    }
+
+    &__clear-btn {
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: var(--w-spacing-xs);
+        border-radius: var(--w-border-radius-sm);
+
+        &:hover {
+            color: var(--w-danger-color);
+            background: rgba(var(--w-danger-color-rgb), 0.1);
+            transform: scale(1.1);
+        }
+
+        &:active {
+            transform: scale(0.95);
+        }
+
+        @include focus-visible();
+
+        @media (prefers-reduced-motion: reduce) {
+            &:hover {
+                transform: none;
+            }
+
+            &:active {
+                transform: none;
+            }
+        }
+    }
+
+    &__loading-icon {
+        color: var(--w-primary-color);
+        animation: spin 1s linear infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    }
+
+    // 🎨 RESULTS SECTION
+    &__results {
+        @include flex(column, flex-start, stretch);
+        gap: var(--w-spacing-md);
+        animation: fadeInScale 0.3s ease-out;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    &__results-header {
+        @include flex(row, space-between, center);
+        padding: 0 var(--w-spacing-xs);
+    }
+
+    &__results-title {
+        font-size: var(--w-font-size-md);
+        font-weight: var(--w-font-weight-semibold);
+        color: var(--w-text-color);
+        margin: 0;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-sm);
+        }
+    }
+}
+
+// 🎨 EMPTY STATE
+.friend-search-empty {
+    @include flex(column, center, center);
+    gap: var(--w-spacing-md);
+    padding: var(--w-spacing-xxl) var(--w-spacing-lg);
+    text-align: center;
+    border-radius: var(--w-border-radius-xl);
+    animation: fadeInScale 0.5s ease-out;
+
+    @include breakpoint(mobile) {
+        padding: var(--w-spacing-xl) var(--w-spacing-md);
+        gap: var(--w-spacing-sm);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+
+    &--initial {
+        background: linear-gradient(135deg,
+                rgba(var(--w-primary-color-rgb), 0.05),
+                rgba(var(--w-primary-color-rgb), 0.02));
+    }
+
+    &__icon {
+        font-size: 4rem;
+        color: var(--w-text-color-light);
+        opacity: 0.5;
+        animation: float 3s ease-in-out infinite;
+
+        @include breakpoint(mobile) {
+            font-size: 3rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+
+        .friend-search-empty--initial & {
+            color: var(--w-primary-color);
+            opacity: 0.6;
+            animation: pulseGlow 2s ease-in-out infinite;
+
+            @media (prefers-reduced-motion: reduce) {
+                animation: none;
+            }
+        }
+    }
+
+    &__title {
+        font-size: var(--w-font-size-xl);
+        font-weight: var(--w-font-weight-semibold);
+        color: var(--w-text-color);
+        margin: 0;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-lg);
+        }
+    }
+
+    &__message {
+        font-size: var(--w-font-size-sm);
+        color: var(--w-text-color-light);
+        margin: 0;
+        max-width: 400px;
+        opacity: 0.8;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-xs);
+        }
+
+        strong {
+            color: var(--w-primary-color);
+            font-weight: var(--w-font-weight-semibold);
+        }
+    }
+}
+

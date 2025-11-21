@@ -1,0 +1,252 @@
+// _form-select.scss
+@use './variables' as *;
+@use './mixins' as *;
+
+/**
+ * Form Select Component - Liquid Glass Design
+ * Hỗ trợ dark mode với hiệu ứng frosted glass và animation mượt mà
+ */
+
+.form-select {
+    // Icon mũi tên dropdown cho light theme
+    --w-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    
+    // Layout & Spacing
+    display: block;
+    width: 100%;
+    padding: var(--w-spacing-sm) calc(var(--w-spacing-lg) + var(--w-spacing-md)) var(--w-spacing-sm) var(--w-spacing-sm);
+    
+    // Appearance Reset
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    // Glass Effect Background
+    background-color: var(--w-input-bg);
+    backdrop-filter: blur(var(--w-blur-sm)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--w-blur-sm)) saturate(180%);
+    
+    // Dropdown Icon
+    background-image: var(--w-form-select-bg-img);
+    background-repeat: no-repeat;
+    background-position: right var(--w-spacing-sm) center;
+    background-size: 16px;
+    
+    // Border & Shape
+    border: 1px solid var(--w-glass-border-light);
+    border-radius: var(--w-border-radius-md);
+    
+    // Typography
+    color: var(--w-text-color);
+    font-size: var(--w-font-size-md);
+    font-weight: var(--w-font-weight-normal);
+    line-height: 1.5;
+    
+    // Transitions
+    transition: var(--w-motion-duration-fast) var(--w-motion-easing-elegant);
+    transition-property: border-color, box-shadow, background-color, transform;
+    
+    // Cursor
+    cursor: pointer;
+    
+    // Prevent text selection
+    user-select: none;
+    -webkit-user-select: none;
+    
+    // Shadow for depth
+    box-shadow: 
+        0 1px 3px rgba(0, 0, 0, 0.05),
+        inset 0 1px 2px rgba(255, 255, 255, 0.1);
+    
+    // Hover State
+    &:hover {
+        border-color: var(--w-primary-color);
+        background-color: rgba(var(--w-input-bg-rgb), 0.95);
+        transform: translateY(-1px);
+        box-shadow: 
+            0 4px 8px rgba(0, 0, 0, 0.08),
+            inset 0 1px 2px rgba(255, 255, 255, 0.15);
+    }
+    
+    // Focus State - Liquid Glass Glow
+    &:focus {
+        border-color: var(--w-primary-color);
+        outline: 0;
+        box-shadow: 
+            0 0 0 3px rgba(var(--w-primary-color-rgb), 0.15),
+            0 4px 12px rgba(var(--w-primary-color-rgb), 0.2),
+            inset 0 1px 2px rgba(255, 255, 255, 0.2);
+        background-color: rgba(var(--w-input-bg-rgb), 1);
+        transform: translateY(-1px);
+    }
+    
+    // Active/Open State
+    &:active {
+        transform: translateY(0);
+        box-shadow: 
+            0 0 0 3px rgba(var(--w-primary-color-rgb), 0.2),
+            0 2px 6px rgba(var(--w-primary-color-rgb), 0.15),
+            inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    // Multiple Select
+    &[multiple],
+    &[size]:not([size="1"]) {
+        padding-right: var(--w-spacing-sm);
+        background-image: none;
+        height: auto;
+        
+        option {
+            padding: var(--w-spacing-xs) var(--w-spacing-sm);
+            border-radius: var(--w-border-radius);
+            margin: 2px 0;
+            
+            &:checked {
+                background: linear-gradient(
+                    to right,
+                    rgba(var(--w-primary-color-rgb), 0.15),
+                    rgba(var(--w-primary-color-rgb), 0.08)
+                );
+                color: var(--w-primary-color);
+                font-weight: var(--w-font-weight-medium);
+            }
+        }
+    }
+    
+    // Disabled State
+    &:disabled {
+        color: var(--w-secondary-color);
+        background-color: rgba(var(--w-input-bg-rgb), 0.5);
+        border-color: var(--w-border-color);
+        cursor: not-allowed;
+        opacity: 0.6;
+        transform: none;
+        box-shadow: none;
+        
+        &:hover {
+            transform: none;
+            box-shadow: none;
+        }
+    }
+    
+    // Firefox Focus Ring
+    &:-moz-focusring {
+        color: transparent;
+        text-shadow: 0 0 0 var(--w-text-color);
+    }
+    
+    // Option Styling
+    option {
+        background-color: var(--w-input-bg);
+        color: var(--w-text-color);
+        padding: var(--w-spacing-xs);
+        
+        &:hover {
+            background-color: rgba(var(--w-primary-color-rgb), 0.1);
+        }
+    }
+}
+
+// Size Variants
+.form-select-sm {
+    padding: var(--w-spacing-xs) calc(var(--w-spacing-md) + var(--w-spacing-sm)) var(--w-spacing-xs) var(--w-spacing-xs);
+    font-size: var(--w-font-size-sm);
+    border-radius: var(--w-border-radius-sm);
+    background-size: 14px;
+    background-position: right var(--w-spacing-xs) center;
+}
+
+.form-select-lg {
+    padding: var(--w-spacing-md) calc(var(--w-spacing-xl) + var(--w-spacing-sm)) var(--w-spacing-md) var(--w-spacing-md);
+    font-size: var(--w-font-size-lg);
+    border-radius: var(--w-border-radius-lg);
+    background-size: 20px;
+    background-position: right var(--w-spacing-md) center;
+}
+
+// Reduced Motion Support
+@media (prefers-reduced-motion: reduce) {
+    .form-select {
+        transition: none;
+        
+        &:hover,
+        &:focus,
+        &:active {
+            transform: none;
+        }
+    }
+}
+
+// Dark Theme Overrides
+[data-ww-theme="dark"] {
+    .form-select {
+        // Icon mũi tên cho dark theme (màu sáng hơn)
+        --w-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23e0e0e0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+        
+        // Enhanced Glass Effect for Dark Mode
+        background-color: var(--w-glass-tint-heavy);
+        backdrop-filter: blur(var(--w-blur-md)) saturate(180%);
+        -webkit-backdrop-filter: blur(var(--w-blur-md)) saturate(180%);
+        
+        border-color: var(--w-glass-border-light);
+        
+        box-shadow: 
+            0 1px 3px rgba(0, 0, 0, 0.3),
+            inset 0 1px 2px rgba(255, 255, 255, 0.05);
+        
+        // Hover State - Dark Mode
+        &:hover {
+            background-color: var(--w-glass-tint-medium);
+            border-color: var(--w-primary-color);
+            box-shadow: 
+                0 4px 8px rgba(0, 0, 0, 0.4),
+                inset 0 1px 2px rgba(255, 255, 255, 0.08);
+        }
+        
+        // Focus State - Dark Mode
+        &:focus {
+            background-color: var(--w-glass-tint-light);
+            box-shadow: 
+                0 0 0 3px rgba(var(--w-primary-color-rgb), 0.25),
+                0 4px 16px rgba(var(--w-primary-color-rgb), 0.3),
+                inset 0 1px 2px rgba(255, 255, 255, 0.1);
+        }
+        
+        // Active State - Dark Mode
+        &:active {
+            box-shadow: 
+                0 0 0 3px rgba(var(--w-primary-color-rgb), 0.3),
+                0 2px 8px rgba(var(--w-primary-color-rgb), 0.25),
+                inset 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        // Multiple Select - Dark Mode
+        &[multiple],
+        &[size]:not([size="1"]) {
+            option:checked {
+                background: linear-gradient(
+                    to right,
+                    rgba(var(--w-primary-color-rgb), 0.25),
+                    rgba(var(--w-primary-color-rgb), 0.15)
+                );
+            }
+        }
+        
+        // Disabled State - Dark Mode
+        &:disabled {
+            background-color: rgba(var(--w-background-color-rgb), 0.3);
+            border-color: var(--w-border-color);
+            opacity: 0.5;
+        }
+        
+        // Option Styling - Dark Mode
+        option {
+            background-color: var(--w-background-color-dark);
+            color: var(--w-text-color);
+            
+            &:hover {
+                background-color: rgba(var(--w-primary-color-rgb), 0.15);
+            }
+        }
+    }
+}

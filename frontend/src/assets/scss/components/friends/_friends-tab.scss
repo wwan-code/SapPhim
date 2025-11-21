@@ -1,0 +1,198 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.friends-tab {
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-lg);
+    height: 100%;
+
+    &__header {
+        position: relative;
+        padding: var(--w-spacing-sm);
+        border-radius: var(--w-border-radius-lg);
+        overflow: visible;@include liquid-glass-base($blur: var(--w-blur-sm), $opacity: var(--w-glass-opacity-medium));
+
+        @include breakpoint(mobile) {
+            padding: var(--w-spacing-xs);
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+
+            &::-webkit-scrollbar {
+                display: none;
+            }
+        }
+    }
+
+    &__nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        @include flex(row, flex-start, stretch);
+        gap: var(--w-spacing-xs);
+        position: relative;
+
+        @include breakpoint(mobile) {
+            flex-direction: row;
+            gap: var(--w-spacing-sm);
+            flex-wrap: nowrap;
+            min-width: min-content;
+        }
+
+        // Tablet: Switch to horizontal
+        @include breakpoint(tablet) {
+            flex-direction: row;
+            gap: var(--w-spacing-sm);
+        }
+
+        // Desktop: Horizontal layout
+        @include breakpoint(desktop) {
+            flex-direction: row;
+            gap: var(--w-spacing-sm);
+        }
+
+        // Warping state: container slightly expands
+        &--warping {
+            transform: scale(1.005);
+            @include transition(transform, var(--w-motion-duration-fast));
+        }
+
+        // Settling state: container returns with spring
+        &--settling {
+            transform: scale(1);
+            transition: transform var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+        }
+    }
+
+    &__indicator-pill {
+        position: absolute;
+        left: 0;
+        border-radius: var(--w-border-radius-lg);
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0;
+        backface-visibility: hidden;
+        perspective: 1000px;
+        will-change: transform, width, opacity;
+        @include tab-glass-pill;
+        @include tab-indicator-glide(1.4, 350ms);
+    }
+
+    &__nav-item {
+        position: relative;
+        padding: var(--w-spacing-sm) var(--w-spacing-md);
+        cursor: pointer;
+        border-radius: var(--w-border-radius-lg);
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-sm);
+        color: var(--w-text-color-light);
+        font-weight: var(--w-font-weight-medium);
+        font-size: var(--w-font-size-sm);
+        background: transparent;
+        border: 1px solid transparent;
+        overflow: hidden;
+        isolation: isolate;
+        @include transition(all, 0.2s, var(--w-motion-easing-spring));
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        z-index: 1;
+        white-space: nowrap;
+
+        @include breakpoint(mobile) {
+            padding: var(--w-spacing-xs) var(--w-spacing-sm);
+            font-size: var(--w-font-size-xs);
+        }
+
+        // Hover state
+        &:hover:not(.is-active) {
+            color: var(--w-text-color);
+            background: rgba(var(--w-background-color-rgb), 0.3);
+
+            .friends-tab__nav-icon {
+                color: var(--w-primary-color);
+            }
+        }
+
+        // Active state
+        &.is-active {
+            color: var(--w-primary-color);
+
+            .friends-tab__nav-icon {
+                color: var(--w-primary-color);
+                filter: drop-shadow(0 2px 4px rgba(var(--w-primary-color-rgb), 0.4));
+            }
+
+            .friends-tab__nav-label {
+                text-shadow: 0 0 12px rgba(var(--w-primary-color-rgb), 0.3);
+            }
+        }
+
+        // Focus visible
+        // @include focus-visible();
+
+        @media (prefers-reduced-motion: reduce) {
+            transition: none;
+
+            &:hover:not(.is-active),
+            &.is-active,
+            &:active {
+                transform: none;
+            }
+        }
+    }
+
+    &__nav-icon {
+        font-size: var(--w-font-size-lg);
+        @include flex(row, center, center);
+        flex-shrink: 0;
+        @include transition(all);
+        position: relative;
+        z-index: 2;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-md);
+        }
+    }
+
+    &__nav-label {
+        font-size: var(--w-font-size-sm);
+        line-height: 1.4;
+        letter-spacing: 0.01em;
+        position: relative;
+        z-index: 2;
+        @include transition(all);
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-xs);
+        }
+    }
+
+    // 🎨 CONTENT AREA
+    &__content {
+        flex: 1;
+        min-height: 300px;
+        animation: contentFadeIn 0.3s ease-in-out;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    // High contrast mode
+    @media (prefers-contrast: high) {
+        &__indicator-pill {
+            background: var(--w-primary-color);
+            border: 2px solid currentColor;
+        }
+
+        &__nav-item {
+            border: 2px solid currentColor;
+
+            &.is-active {
+                background: transparent;
+                color: var(--w-primary-color);
+            }
+        }
+    }
+}

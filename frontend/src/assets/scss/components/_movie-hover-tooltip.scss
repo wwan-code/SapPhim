@@ -1,0 +1,433 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.movie-hover-tooltip {
+    position: absolute;
+    @include liquid-glass-complete($blur: var(--w-blur-md), $opacity: 0.85, $add-tint: false, $add-highlight: false, $set-position: false);
+    z-index: var(--w-zindex-popover);
+    border-radius: var(--w-border-radius-xl);
+    overflow: hidden;
+    animation: tooltipFadeInScale 350ms var(--w-motion-easing-spring);
+    will-change: transform, opacity;
+    max-width: 420px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    @include transition(all, var(--w-motion-duration-medium), var(--w-motion-easing-spring));
+
+    @include breakpoint(mobile) {
+        width: calc(100vw - 24px) !important;
+        left: 12px !important;
+        right: 12px !important;
+        max-width: none;
+        border-radius: var(--w-border-radius-lg);
+    }
+
+    @include breakpoint(tablet) {
+        grid-template-rows: 200px auto;
+        max-width: 380px;
+    }
+
+    @include breakpoint(desktop) {
+        grid-template-rows: 236px auto;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: tooltipFadeIn 250ms ease-out;
+    }
+
+    &--hovered {
+        box-shadow: 
+            0 20px 40px -10px rgba(0, 0, 0, 0.4),
+            0 10px 20px -5px rgba(0, 0, 0, 0.3),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+    }
+
+    // 🎬 MEDIA SECTION
+    &__media {
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: 16 / 9;
+        padding-top: 56.25%; // 16:9 ratio
+        background: linear-gradient(135deg, 
+            rgba(var(--w-primary-color-rgb), 0.1), 
+            rgba(var(--w-secondary-color-rgb), 0.1)
+        );
+
+        @include breakpoint(mobile) {
+            aspect-ratio: 16 / 9;
+            min-height: 180px;
+        }
+    }
+
+    &__image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    &__gradient {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            180deg, 
+            rgba(0, 0, 0, 0) 0%,
+            rgba(0, 0, 0, 0.3) 50%,
+            rgba(0, 0, 0, 0.8) 100%
+        );
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    // 📝 CONTENT BODY
+    &__body {
+        position: relative;
+        padding: var(--w-spacing-md);
+        @include flex(column, flex-start, stretch);
+        gap: var(--w-spacing-sm);
+        z-index: 2;
+
+        @include breakpoint(mobile) {
+            padding: var(--w-spacing-sm);
+            gap: var(--w-spacing-xs);
+        }
+    }
+
+    &__header {
+        @include flex(column, flex-start, stretch);
+        gap: 4px;
+    }
+
+    &__title {
+        margin: 0;
+        font-size: var(--w-font-size-md);
+        font-weight: var(--w-font-weight-bold);
+        color: var(--w-text-color);
+        line-height: 1.3;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-md);
+        }
+    }
+
+    &__subtitle {
+        margin: 0;
+        font-size: var(--w-font-size-sm);
+        color: var(--w-text-color-light);
+        opacity: 0.8;
+        line-height: 1.4;
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-xs);
+        }
+    }
+
+    // 🎮 ACTION BUTTONS
+    &__actions {
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-xs);
+
+        @include breakpoint(mobile) {
+            gap: var(--w-spacing-xxs);
+        }
+    }
+
+    &__btn {
+        @include flex(row, center, center);
+        gap: var(--w-spacing-xs);
+        padding: var(--w-spacing-xs) var(--w-spacing-sm);
+        border: 1px solid transparent;
+        border-radius: var(--w-border-radius-md);
+        font-size: var(--w-font-size-sm);
+        font-weight: var(--w-font-weight-medium);
+        text-decoration: none;
+        cursor: pointer;
+        @include transition(all, var(--w-motion-duration-fast), var(--w-motion-easing-spring));
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+        height: 32px;
+        min-width: 44px;
+        line-height: 32px;
+
+        @include breakpoint(mobile) {
+            padding: var(--w-spacing-xs);
+            font-size: var(--w-font-size-xs);
+            min-width: 36px;
+            min-height: 36px;
+        }
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent 70%);
+            opacity: 0;
+            @include transition(opacity, var(--w-motion-duration-fast));
+        }
+
+        &:hover::before {
+            opacity: 1;
+        }
+
+        @include focus-visible();
+
+        @media (prefers-reduced-motion: reduce) {
+            &:hover {
+                transform: none;
+            }
+
+            &:active {
+                transform: none;
+            }
+        }
+
+        &--play {
+            flex: 1;
+            background: linear-gradient(135deg, 
+                rgba(var(--w-primary-color-rgb), 0.9), 
+                rgba(var(--w-primary-bg-subtle-rgb), 0.7)
+            );
+            color: #000;
+            border-color: rgba(var(--w-primary-color-rgb), 0.5);
+            box-shadow: 0 2px 8px rgba(var(--w-primary-color-rgb), 0.3);
+
+            &:hover {
+                background: linear-gradient(135deg, 
+                    rgba(var(--w-primary-color-rgb), 1), 
+                    rgba(var(--w-primary-bg-subtle-rgb), 0.9)
+                );
+                box-shadow: 
+                    0 4px 12px rgba(var(--w-primary-color-rgb), 0.4),
+                    0 0 18px rgba(var(--w-primary-color-rgb), 0.2);
+            }
+        }
+
+        &--favorite {
+            background: linear-gradient(135deg, 
+                rgba(var(--w-danger-color-rgb), 0.2), 
+                rgba(var(--w-danger-color-rgb), 0.1)
+            );
+            color: var(--w-danger-color);
+            border-color: rgba(var(--w-danger-color-rgb), 0.3);
+            min-width: 40px;
+            padding: var(--w-spacing-xs);
+
+            @include breakpoint(mobile) {
+                min-width: 36px;
+            }
+
+            &:hover {
+                background: linear-gradient(135deg, 
+                    rgba(var(--w-danger-color-rgb), 0.3), 
+                    rgba(var(--w-danger-color-rgb), 0.2)
+                );
+                box-shadow: 0 4px 12px rgba(var(--w-danger-color-rgb), 0.3);
+                transform: translateY(-2px) scale(1.05);
+            }
+
+            &--active {
+                background: linear-gradient(135deg, 
+                    rgba(var(--w-danger-color-rgb), 0.9), 
+                    rgba(var(--w-danger-color-rgb), 0.7)
+                );
+                color: #fff;
+                border-color: rgba(var(--w-danger-color-rgb), 0.6);
+                box-shadow: 0 2px 8px rgba(var(--w-danger-color-rgb), 0.4);
+
+                .movie-hover-tooltip__btn-icon {
+                    animation: heartBeat 0.6s ease-in-out;
+                }
+            }
+
+            &--disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
+        }
+
+        &--info {
+            background: linear-gradient(135deg, 
+                rgba(var(--w-info-color-rgb), 0.2), 
+                rgba(var(--w-info-color-rgb), 0.1)
+            );
+            color: var(--w-info-color);
+            border-color: rgba(var(--w-info-color-rgb), 0.3);
+            min-width: 40px;
+            padding: var(--w-spacing-xs);
+
+            @include breakpoint(mobile) {
+                min-width: 36px;
+            }
+
+            &:hover {
+                background: linear-gradient(135deg, 
+                    rgba(var(--w-info-color-rgb), 0.3), 
+                    rgba(var(--w-info-color-rgb), 0.2)
+                );
+                box-shadow: 0 4px 12px rgba(var(--w-info-color-rgb), 0.3);
+                transform: translateY(-2px) scale(1.05);
+            }
+        }
+    }
+
+    &__btn-icon {
+        flex-shrink: 0;
+        font-size: var(--w-font-size-md);
+
+        @include breakpoint(mobile) {
+            font-size: var(--w-font-size-sm);
+        }
+
+        &--spin {
+            animation: spin 1s linear infinite;
+
+            @media (prefers-reduced-motion: reduce) {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+        }
+    }
+
+    &__btn-text {
+        @include breakpoint(mobile) {
+            display: none;
+        }
+
+        &--desktop-only {
+            @include breakpoint(mobile) {
+                display: none;
+            }
+
+            @include breakpoint(tablet) {
+                display: none;
+            }
+        }
+    }
+
+    &__meta {
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-xs);
+        flex-wrap: wrap;
+
+        @include breakpoint(mobile) {
+            gap: 4px;
+        }
+    }
+
+    &__badge {
+        @include flex(row, center, center);
+        padding: 4px var(--w-spacing-sm);
+        border-radius: var(--w-border-radius);
+        font-size: var(--w-font-size-xs);
+        font-weight: var(--w-font-weight-medium);
+        background: rgba(var(--w-background-color-rgb), 0.6);
+        backdrop-filter: blur(8px);
+        color: var(--w-text-color);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        white-space: nowrap;
+
+        @include breakpoint(mobile) {
+            padding: 2px var(--w-spacing-xs);
+            font-size: 10px;
+        }
+
+        // IMDb Badge
+        &--imdb {
+            @include flex(row, center, center);
+            gap: 4px;
+            background: linear-gradient(135deg, 
+                rgba(240, 210, 92, 0.2), 
+                rgba(240, 210, 92, 0.1)
+            );
+            border-color: rgba(240, 210, 92, 0.4);
+            color: #f0d25c;
+            font-weight: var(--w-font-weight-semibold);
+
+            &::before {
+                content: "IMDb";
+                font-size: var(--w-font-size-xxs);
+                font-weight: var(--w-font-weight-bold);
+                opacity: 0.9;
+
+                @include breakpoint(mobile) {
+                    font-size: 9px;
+                }
+            }
+        }
+
+        &-value {
+            font-weight: var(--w-font-weight-bold);
+        }
+    }
+
+    // 🏷️ GENRE TAGS
+    &__tags {
+        font-size: var(--w-font-size-xs);
+        color: var(--w-text-color-light);
+        opacity: 0.7;
+        line-height: 1.6;
+
+        @include breakpoint(mobile) {
+            font-size: 11px;
+        }
+    }
+}
+
+// Animations
+@keyframes tooltipFadeInScale {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes heartBeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    15% {
+        transform: scale(1.3);
+    }
+    30% {
+        transform: scale(1);
+    }
+    45% {
+        transform: scale(1.2);
+    }
+    60% {
+        transform: scale(1);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}

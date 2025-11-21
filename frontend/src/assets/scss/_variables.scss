@@ -1,0 +1,250 @@
+// _variables.scss
+
+// Default (Light) Theme Variables
+:root,
+[data-ww-theme="light"] {
+  // Colors
+  --w-blue: #0d6efd;
+  --w-indigo: #6610f2;
+  --w-purple: #6f42c1;
+  --w-pink: #d63384;
+  --w-red: #dc3545;
+  --w-orange: #fd7e14;
+  --w-yellow: #ffc107;
+  --w-green: #198754;
+  --w-teal: #20c997;
+  --w-teal-rgb: 32, 201, 151;
+  --w-cyan: #0dcaf0;
+  --w-black: #000;
+  --w-white: #fff;
+  --w-primary-color: var(--w-teal);
+  --w-primary-color-rgb: var(--w-teal-rgb);
+  --w-primary-color-hover: #199673;
+  --w-primary-bg-subtle: #8cfad2;
+  --w-primary-bg-subtle-rgb: 140, 250, 210;
+  --w-secondary-color: #6c757d;
+  --w-secondary-color-rgb: 108, 117, 125;
+  --w-secondary-color-hover: #5a636b;
+  --w-accent-color: #007bff;
+  --w-success-color: #28a745;
+  --w-online-color: #28a745;
+  --w-danger-color: #dc3545;
+  --w-danger-color-hover: #bb0e1f;
+  --w-warning-color: #ffc107;
+  --w-info-color: #17a2b8;
+  --w-accent-color-rgb: 0, 123, 255;
+  --w-success-color-rgb: 40, 167, 69;
+  --w-online-color-rgb: 40, 167, 69;
+  --w-danger-color-rgb: 220, 53, 69;
+  --w-warning-color-rgb: 255, 193, 7;
+  --w-info-color-rgb: 23, 162, 184;
+
+  // Backgrounds
+  --w-background-color: #edf0f3;
+  --w-background-color-rgb: 237, 240, 243;
+  --w-background-color-light: #fff;
+  --w-background-color-light-rgb: 255, 255, 255;
+  --w-background-color-dark: #dbdde0;
+  --w-background-color-dark-rgb: 219, 221, 224;
+  --w-header-bg: var(--w-background-color);
+  --w-header-bg-rgb: var(--w-background-color-rgb);
+  --w-footer-bg: var(--w-background-color);
+  --w-sidebar-bg: var(--w-background-color);
+  --w-input-bg: var(--w-glass-tint-heavy);
+  --w-input-bg-rgb: 248, 249, 250;
+
+  // Search Bar
+  --w-search-bar-bg: #F1F2F3;
+  --w-search-bar-bg-rgb: 241, 242, 243;
+  --w-search-bar-bg-focused: #fff;
+  --w-search-bar-bg-focused-rgb: 255, 255, 255;
+  --w-search-bar-bg-hover: #e3e5e7;
+  --w-search-bar-bg-hover-rgb: 227, 229, 231;
+
+  // Text Colors
+  --w-text-color: #212121;
+  --w-text-color-rgb: 33, 33, 33;
+  --w-text-color-light: #000;
+  --w-text-color-inverted: #2c2c2c;
+
+  // Borders
+  --w-border-width: 1px;
+  --w-border-style: solid;
+  --w-border-color: #dee2e6;
+  --w-border-color-dark: #adb5bd;
+
+  // Spacing
+  --w-spacing-xs: 4px;
+  --w-spacing-sm: 8px;
+  --w-spacing-md: 16px;
+  --w-spacing-lg: 24px;
+  --w-spacing-xl: 32px;
+  --w-spacing-xxl: 48px;
+
+  // TV Spacing
+  --w-spacing-tv-md: 24px;
+  --w-spacing-tv-lg: 32px;
+  --w-spacing-tv-xl: 48px;
+  --w-spacing-tv-xxl: 64px;
+
+  // Font Sizes
+  --w-font-size-xs: 0.75rem; // 12px
+  --w-font-size-sm: 0.875rem; // 14px
+  --w-font-size-md: 1rem; // 16px (base)
+  --w-font-size-lg: 1.125rem; // 18px
+  --w-font-size-xl: 1.25rem; // 20px
+  --w-font-size-xxl: 1.5rem; // 24px
+  --w-font-size-h1: 2.5rem; // 40px
+  --w-font-size-h2: 2rem; // 32px
+  --w-font-size-h3: 1.75rem; // 28px
+
+  // TV Font Sizes
+  --w-font-size-tv-md: 1.25rem; // 20px
+  --w-font-size-tv-lg: 1.5rem; // 24px
+  --w-font-size-tv-xl: 1.75rem; // 28px
+  --w-font-size-tv-xxl: 2rem; // 32px
+  --w-font-size-tv-h1: 3.5rem; // 56px
+  --w-font-size-tv-h2: 3rem; // 48px
+  --w-font-size-tv-h3: 2.5rem; // 40px
+
+  // Font Weights
+  --w-font-weight-thin: 100;
+  --w-font-weight-lighter: 200;
+  --w-font-weight-light: 300;
+  --w-font-weight-normal: 400;
+  --w-font-weight-medium: 500;
+  --w-font-weight-semibold: 600;
+  --w-font-weight-bold: 700;
+  --w-font-weight-bolder: 800;
+  --w-font-weight-black: 900;
+
+  // Border Radius
+  --w-border-radius: 0.25rem; // 4px
+  --w-border-radius-sm: 0.375rem; // 6px
+  --w-border-radius-md: 0.5rem; // 8px
+  --w-border-radius-lg: 1rem; // 16px
+  --w-border-radius-xl: 1.5rem; // 24px
+  --w-border-radius-circle: 50%;
+
+  // Box Shadows
+  --w-box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --w-box-shadow-sm: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+  --w-box-shadow-md: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.1);
+  --w-box-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+
+  // Transitions & Motion
+  --w-transition-ease: all 0.3s ease-in-out;
+  --w-transition-smooth: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --w-motion-duration-instant: 100ms;
+  --w-motion-duration-fast: 180ms;
+  --w-motion-duration-medium: 350ms;
+  --w-motion-duration-slow: 500ms;
+  --w-motion-duration-slower: 700ms;
+  --w-motion-easing-snappy: cubic-bezier(0.5, 0, 0.1, 1); // Easing for closing
+  --w-motion-easing-elegant: cubic-bezier(0.34, 1.56, 0.64, 1); // Easing for opening
+  --w-motion-easing-spring: cubic-bezier(0.22, 0.9, 0.3, 1); // Spring easing for liquid glass
+  --w-motion-easing-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1); // Overshoot for playful animations
+
+  // Backdrop Blur Tokens (cho frosted glass effect)
+  --w-blur-xs: 4px;
+  --w-blur-sm: 8px;
+  --w-blur-md: 12px;
+  --w-blur-lg: 20px;
+  --w-blur-xl: 30px;
+  --w-blur-xxl: 40px;
+
+  // Glass Background Opacity
+  --w-glass-opacity-subtle: 0.4;
+  --w-glass-opacity-light: 0.6;
+  --w-glass-opacity-medium: 0.7;
+  --w-glass-opacity-heavy: 0.85;
+  --w-glass-opacity-solid: 0.95;
+
+  // Liquid Glass Tokens
+  --w-glass-tint-light: rgba(0, 0, 0, 0.05);
+  --w-glass-tint-medium: rgba(0, 0, 0, 0.075);
+  --w-glass-tint-heavy: rgba(0, 0, 0, 0.095);
+  --w-glass-reflection: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 60%);
+  --w-glass-border-light: rgba(0, 0, 0, 0.05);
+  --w-glass-border-heavy: rgba(0, 0, 0, 0.1);
+  --w-glass-shadow-ambient: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  --w-glass-shadow-specular: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+  --w-glass-inner-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+
+  // Layout
+  --w-max-width: 1640px;
+  --w-header-height-desktop: 72px;
+  --w-header-height-mobile: 56px;
+  --w-footer-height: 200px;
+  --w-sidebar-width-desktop: 300px;
+  --w-sidebar-width-mobile: 280px;
+
+  // Z-index
+  --w-zindex-sticky: 1020;
+  --w-zindex-fixed: 1030;
+  --w-zindex-offcanvas-backdrop: 1040;
+  --w-zindex-offcanvas: 1045;
+  --w-zindex-modal-backdrop: 1050;
+  --w-zindex-modal: 1055;
+  --w-zindex-popover: 1070;
+  --w-zindex-tooltip: 1080;
+  --w-zindex-toast: 1090;
+  --w-zindex-dropdown: 1095;
+  --w-zindex-loading-fullscreen: 9999;
+
+  // Font Family
+  --w-font-family-base: 'Arial', sans-serif;
+}
+
+// Dark Theme Variables
+[data-ww-theme="dark"] {
+  // Backgrounds
+  --w-background-color: #191b24;
+  --w-background-color-rgb: 25, 27, 36;
+  --w-background-color-light: rgb(40, 44, 58);
+  --w-background-color-light-rgb: 40, 44, 58;
+  --w-background-color-dark-rgb: 22, 24, 29;
+  --w-background-color-dark: rgb(22, 24, 29);
+  --w-header-bg: var(--w-background-color);
+  --w-header-bg-rgb: var(--w-background-color-rgb);
+  --w-footer-bg: var(--w-background-color);
+  --w-sidebar-bg: var(--w-background-color);
+  --w-input-bg: var(--w-glass-tint-heavy);
+  --w-input-bg-rgb: 30, 32, 35;
+
+  // Search Bar
+  --w-search-bar-bg: #1a1a1a;
+  --w-search-bar-bg-rgb: 26, 26, 26;
+  --w-search-bar-bg-focused: #2c2c2c;
+  --w-search-bar-bg-focused-rgb: 0, 0, 0;
+  --w-search-bar-bg-hover: #1a1a1a;
+  --w-search-bar-bg-hover-rgb: 26, 26, 26;
+
+  // Text Colors
+  --w-text-color: #e0e0e0;
+  --w-text-color-rgb: 224, 224, 224;
+  --w-text-color-light: #fff;
+  --w-text-color-inverted: #a0a0a0;
+
+  // Borders
+  --w-border-color: #444444;
+  --w-border-color-dark: #666666;
+
+  // Glass Background Opacity (dark mode cần opacity cao hơn)
+  --w-glass-opacity-subtle: 0.5;
+  --w-glass-opacity-light: 0.7;
+  --w-glass-opacity-medium: 0.8;
+  --w-glass-opacity-heavy: 0.9;
+  --w-glass-opacity-solid: 0.98;
+
+  // Liquid Glass Tokens for Dark Mode
+  --w-glass-tint-light: rgba(255, 255, 255, 0.05);
+  --w-glass-tint-medium: rgba(255, 255, 255, 0.08);
+  --w-glass-tint-heavy: rgba(255, 255, 255, 0.12);
+  --w-glass-reflection: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 50%);
+  --w-glass-border-light: rgba(255, 255, 255, 0.1);
+  --w-glass-border-heavy: rgba(255, 255, 255, 0.2);
+  --w-glass-shadow-ambient: 0 8px 32px 0 rgba(255, 255, 255, 0.05);
+  --w-glass-shadow-specular: 0 4px 16px 0 rgba(255, 255, 255, 0.05);
+  --w-glass-inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}

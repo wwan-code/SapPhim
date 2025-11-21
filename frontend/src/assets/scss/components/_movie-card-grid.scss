@@ -1,0 +1,103 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.movie-card-grid {
+  display: grid;
+  gap: var(--w-spacing-lg);
+  width: 100%;
+  position: relative;
+
+  // Responsive grid columns
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+
+  @include breakpoint(mobile) {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--w-spacing-md);
+  }
+
+  @include breakpoint(tablet) {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  @include breakpoint(desktop) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  // Mini variant
+  &--mini {
+    grid-template-columns: 1fr;
+    gap: var(--w-spacing-md);
+
+    @include breakpoint(tablet) {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+  }
+
+  // Horizontal variant
+  &--horizontal {
+    grid-template-columns: 1fr;
+    
+    @include breakpoint(tablet) {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+
+    @include breakpoint(desktop) {
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    }
+  }
+
+  // Empty state
+  &__empty {
+    grid-column: 1 / -1;
+    @include flex(column, center, center);
+    padding: var(--w-spacing-2xl) var(--w-spacing-lg);
+    text-align: center;
+    color: var(--w-text-color-light);
+    min-height: 400px;
+
+    .fa-film {
+      font-size: 4rem;
+      margin-bottom: var(--w-spacing-lg);
+      opacity: 0.3;
+    }
+
+    p {
+      font-size: var(--w-font-size-lg);
+      margin: 0;
+    }
+  }
+
+  // Placeholder for virtualization
+  &__placeholder {
+    background: transparent;
+  }
+
+  // Performance stats (dev only)
+  &__stats {
+    padding: var(--w-spacing-sm);
+    background: var(--w-background-color-dark);
+    border-radius: var(--w-border-radius);
+    text-align: center;
+    color: var(--w-text-color-light);
+    font-family: monospace;
+    margin-top: var(--w-spacing-lg);
+  }
+
+  // Staggered fade-in animation for cards
+  > * {
+    animation: fadeInUp 0.4s var(--w-motion-easing-elegant) both;
+    
+    @for $i from 1 through 24 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.03}s;
+      }
+    }
+  }
+
+  // Disable stagger on reduced motion
+  @media (prefers-reduced-motion: reduce) {
+    > * {
+      animation: none;
+    }
+  }
+}

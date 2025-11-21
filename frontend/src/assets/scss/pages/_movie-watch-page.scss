@@ -1,0 +1,426 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.movie-watch-page {
+  display: grid;
+  grid-template-columns: 1fr 350px; // Desktop: Main content + Fixed Sidebar
+  gap: var(--w-spacing-lg);
+  padding: var(--w-spacing-lg);
+  max-width: var(--w-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  color: var(--w-text-color-light);
+
+  @include breakpoint(tablet-and-below) {
+    grid-template-columns: 1fr;
+    padding: var(--w-spacing-md);
+    padding-top: calc(var(--w-header-height-mobile) + var(--w-spacing-md));
+  }
+
+  @include breakpoint(tv) {
+    grid-template-columns: 1fr 450px;
+    gap: var(--w-spacing-tv-lg);
+    padding: var(--w-spacing-tv-lg);
+    max-width: 100%;
+  }
+
+  &__main-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--w-spacing-lg);
+    min-width: 0; // Prevent flex item overflow
+  }
+
+  // Player Container
+  .player-container {
+    width: 100%;
+    position: relative;
+    border-radius: var(--w-border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--w-glass-shadow-ambient);
+    background-color: #000;
+    aspect-ratio: 16/9;
+
+    .video-player {
+      width: 100%;
+      height: 100%;
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+    }
+  }
+
+  // Movie Info Panel (Glass)
+  .movie-info {
+    @include liquid-glass-base($blur: var(--w-blur-md), $opacity: var(--w-glass-opacity-heavy));
+    @include liquid-glass-border(0.1);
+    padding: var(--w-spacing-lg);
+    border-radius: var(--w-border-radius-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--w-spacing-md);
+
+    &__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--w-spacing-md);
+
+      @include breakpoint(mobile) {
+        flex-direction: column;
+      }
+    }
+
+    &__title {
+      font-size: var(--w-font-size-h2);
+      font-weight: var(--w-font-weight-bold);
+      margin: 0;
+      line-height: 1.2;
+      background: linear-gradient(to right, #fff, #ccc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+
+      @include breakpoint(tv) {
+        font-size: var(--w-font-size-tv-h2);
+      }
+    }
+
+    &__controls {
+      display: flex;
+      gap: var(--w-spacing-sm);
+    }
+
+    &__cinema-btn,
+    &__next-btn {
+      @include button-style(rgba(255, 255, 255, 0.1), #fff);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      gap: var(--w-spacing-xs);
+      font-weight: var(--w-font-weight-medium);
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+      }
+    }
+
+    &__next-btn {
+      background-color: var(--w-primary-color);
+      border-color: var(--w-primary-color);
+
+      &:hover {
+        background-color: var(--w-primary-color-hover);
+      }
+    }
+
+    &__views {
+      display: flex;
+      align-items: center;
+      gap: var(--w-spacing-xs);
+      color: rgba(255, 255, 255, 0.6);
+      font-size: var(--w-font-size-sm);
+    }
+  }
+
+  // Meta Info Panel (Glass)
+  .movie-meta {
+    @include liquid-glass-base($blur: var(--w-blur-md), $opacity: var(--w-glass-opacity-medium));
+    @include liquid-glass-border(0.1);
+    padding: var(--w-spacing-lg);
+    border-radius: var(--w-border-radius-lg);
+
+    .meta-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--w-spacing-sm);
+      margin-bottom: var(--w-spacing-md);
+    }
+
+    .meta-tag {
+      padding: 4px 12px;
+      border-radius: 20px;
+      background-color: rgba(255, 255, 255, 0.1);
+      font-size: var(--w-font-size-xs);
+      color: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: var(--w-transition-ease);
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &.quality {
+        background-color: var(--w-primary-color);
+        color: #fff;
+        border-color: var(--w-primary-color);
+        font-weight: bold;
+      }
+    }
+
+    .meta-description {
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.6;
+      font-size: var(--w-font-size-md);
+    }
+  }
+
+  // Sidebar (Glass)
+  &__sidebar {
+    @include liquid-glass-base($blur: var(--w-blur-md), $opacity: var(--w-glass-opacity-heavy));
+    @include liquid-glass-border(0.1);
+    border-radius: var(--w-border-radius-lg);
+    padding: var(--w-spacing-md);
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
+    gap: var(--w-spacing-lg);
+    position: sticky;
+    top: calc(var(--w-header-height-desktop) + var(--w-spacing-lg));
+    max-height: calc(100vh - var(--w-header-height-desktop) - var(--w-spacing-xl));
+    overflow-y: auto;
+
+    // Custom Scrollbar
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    @include breakpoint(tablet-and-below) {
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
+
+    .sidebar__section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--w-spacing-md);
+    }
+
+    .sidebar__title {
+      font-size: var(--w-font-size-lg);
+      font-weight: var(--w-font-weight-bold);
+      color: #fff;
+      margin: 0;
+      padding-bottom: var(--w-spacing-sm);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    // Auto Next Toggle
+    .auto-next-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--w-spacing-sm);
+      font-size: var(--w-font-size-sm);
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+
+      input {
+        appearance: none;
+        width: 36px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        position: relative;
+        cursor: pointer;
+        transition: 0.3s;
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          background: #fff;
+          border-radius: 50%;
+          transition: 0.3s;
+        }
+
+        &:checked {
+          background: var(--w-primary-color);
+
+          &::after {
+            transform: translateX(16px);
+          }
+        }
+      }
+    }
+
+    // Episode List Styles
+    .episode-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--w-spacing-xs);
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .episode-item {
+      display: flex;
+      align-items: center;
+      gap: var(--w-spacing-sm);
+      padding: var(--w-spacing-sm);
+      border-radius: var(--w-border-radius-md);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: var(--w-transition-ease);
+      text-decoration: none;
+      color: #fff;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(4px);
+      }
+
+      &--active {
+        background: rgba(var(--w-primary-color-rgb), 0.2);
+        border-color: var(--w-primary-color);
+
+        .episode-number {
+          color: var(--w-primary-color);
+          font-weight: bold;
+        }
+      }
+
+      .episode-thumbnail {
+        width: 80px;
+        height: 45px;
+        border-radius: var(--w-border-radius-sm);
+        object-fit: cover;
+        background-color: #222;
+        flex-shrink: 0;
+      }
+
+      .episode-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+      }
+
+      .episode-number {
+        font-size: var(--w-font-size-sm);
+        font-weight: var(--w-font-weight-medium);
+      }
+
+      .episode-title {
+        font-size: var(--w-font-size-xs);
+        color: rgba(255, 255, 255, 0.6);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+}
+
+// Cinema Mode
+.cinema-mode {
+  overflow: hidden;
+
+  // Hide Header globally when in cinema mode
+  .header {
+    display: none !important;
+  }
+
+  // Hide Footer globally
+  .footer {
+    display: none !important;
+  }
+
+  // Hide Chat AI Popup
+  .chat-ai-popup {
+    display: none !important;
+  }
+
+  .movie-watch-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background-color: #000;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &__main-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .player-container {
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+      max-height: none;
+      aspect-ratio: auto;
+      box-shadow: none;
+
+      .video-player {
+        width: 100%;
+        height: 100%;
+      }
+    }
+
+    .movie-info,
+    .movie-meta,
+    &__sidebar,
+    .comment-section {
+      display: none;
+    }
+  }
+}
+
+// Floating Exit Button
+.cinema-mode-exit-btn {
+  position: fixed;
+  top: var(--w-spacing-lg);
+  right: var(--w-spacing-lg);
+  z-index: var(--w-zindex-modal);
+  padding: 10px 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  font-weight: var(--w-font-weight-medium);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &:hover {
+    background-color: var(--w-primary-color);
+    border-color: var(--w-primary-color);
+    transform: scale(1.05);
+  }
+}

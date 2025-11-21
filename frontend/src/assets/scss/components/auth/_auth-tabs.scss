@@ -1,0 +1,87 @@
+@use '../../_variables' as *;
+@use '../../_mixins' as *;
+
+.auth-tabs {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--w-spacing-xs);
+  background-color: rgba(var(--w-background-color-rgb), 0.1);
+  border-radius: var(--w-border-radius-lg);
+  margin-bottom: var(--w-spacing-lg);
+  @include liquid-motion(transform, 180ms);
+
+  // Trạng thái "warping" khi chuyển tab, co lại một chút
+  &[data-state='warping'] {
+    animation: tabShellWarp 180ms var(--w-motion-easing-spring);
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+  }
+
+  // Trạng thái "settling", nảy nhẹ trở lại
+  &[data-state='settling'] {
+    animation: tabShellSettle 270ms var(--w-motion-easing-spring);
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+  }
+}
+
+.auth-tabs__indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: calc(var(--w-border-radius-lg) - 4px);
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, width, opacity;
+
+  // Hiệu ứng kính mờ cho indicator
+  @include tab-glass-pill;
+  // Hiệu ứng trượt nảy mượt mà
+  @include tab-indicator-glide(1.4, 350ms);
+}
+
+.auth-tabs__tab-button {
+  @include flex(row, center, center);
+  @include focus-visible;
+  @include liquid-glass-ripple(rgba(255, 255, 255, 0.2));
+
+  position: relative;
+  z-index: 2;
+  padding: var(--w-spacing-sm) var(--w-spacing-lg);
+  border-radius: calc(var(--w-border-radius-lg) - 4px);
+  font-size: var(--w-font-size-md);
+  font-weight: var(--w-font-weight-medium);
+  color: var(--w-text-color);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  flex: 1;
+  transform: translateZ(0);
+  @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+
+  &:hover:not(.auth-tabs__tab-button--active) {
+    color: var(--w-primary-color);
+    transform: translateZ(0);
+  }
+
+  &--active {
+    color: var(--w-primary-color);
+    font-weight: var(--w-font-weight-bold);
+  }
+}
+
+.auth-tabs__label {
+  position: relative;
+  z-index: 2;
+}

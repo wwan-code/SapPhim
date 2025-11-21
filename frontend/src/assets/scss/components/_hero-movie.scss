@@ -1,0 +1,851 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.hero-movie {
+  position: relative;
+  width: 100%;
+  min-height: 95vh;
+  overflow: hidden;
+  margin-top: calc((var(--w-header-height-desktop) + var(--w-spacing-xl)) * -1);
+  contain: layout style paint;
+  will-change: scroll-position;
+
+  @include breakpoint(tablet-and-below) {
+    min-height: 75vh;
+    margin-top: calc((var(--w-header-height-mobile) + var(--w-spacing-md)) * -1);
+  }
+
+  &__background {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: url(/images/dotted.png);
+      background-repeat: repeat;
+      opacity: 0.15;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 200px;
+      z-index: 3;
+      background: linear-gradient(180deg,
+          transparent 0%,
+          rgba(var(--w-background-color-rgb), 0.3) 30%,
+          rgba(var(--w-background-color-rgb), 0.8) 70%,
+          rgba(var(--w-background-color-rgb), 1) 100%);
+      pointer-events: none;
+    }
+  }
+
+  &__background-image {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 30%;
+    filter: blur(60px);
+    opacity: 0.25;
+    transform: scale(1.1) translateZ(0);
+    @include liquid-motion(opacity, 0.8s);
+    will-change: opacity;
+
+    @supports (-webkit-backdrop-filter: blur()) or (backdrop-filter: blur()) {
+      filter: blur(80px);
+    }
+
+    @include breakpoint(mobile) {
+      background-position: center 20%;
+      filter: blur(20px); // Giảm blur trên mobile để cải thiện hiệu suất
+      transform: scale(1.05) translateZ(0);
+    }
+
+    &.loaded {
+      animation: fadeInImage 0.6s ease-out forwards;
+    }
+  }
+
+  &__cover-fade {
+    position: absolute;
+    inset: 0;
+    max-width: 1900px;
+    margin: 0 auto;
+    mask-image: linear-gradient(0deg,
+        transparent 0%,
+        black 15%,
+        black 85%,
+        transparent 100%);
+    -webkit-mask-image: linear-gradient(0deg,
+        transparent 0%,
+        black 15%,
+        black 85%,
+        transparent 100%);
+
+    @include breakpoint(tablet-and-below) {
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+  }
+
+  &__cover-image {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.5;
+    mask-image: linear-gradient(90deg,
+        transparent 0%,
+        black 25%,
+        black 75%,
+        transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg,
+        transparent 0%,
+        black 25%,
+        black 75%,
+        transparent 100%);
+    transform: translateZ(0);
+    will-change: opacity;
+    @include liquid-motion(opacity, 0.6s);
+
+    @include breakpoint(mobile) {
+      opacity: 0.3;
+    }
+  }
+
+  &__content {
+    position: relative;
+    z-index: 4;
+    min-height: 85vh;
+    padding: calc(var(--w-header-height-desktop) + var(--w-spacing-xxl)) 0 var(--w-spacing-xxl);
+    @include flex(row, space-between, flex-end);
+    gap: var(--w-spacing-xxl);
+    container-type: inline-size;
+
+    @include breakpoint(tablet-and-below) {
+      @include flex(column, flex-start, stretch);
+      min-height: 75vh;
+      padding: calc(var(--w-header-height-mobile) + var(--w-spacing-xxl) * 2) 0 var(--w-spacing-xl);
+      gap: var(--w-spacing-xl);
+    }
+  }
+
+  &__left {
+    flex: 1;
+    max-width: 700px;
+    padding: 0 var(--w-spacing-xxl);
+    @include motion(fadeInUp, 0.8s, var(--w-motion-easing-spring));
+
+    @include breakpoint(xl) {
+      padding: 0 var(--w-spacing-xl);
+    }
+
+    @include breakpoint(tablet-and-below) {
+      max-width: 100%;
+      padding: 0 var(--w-spacing-lg);
+    }
+
+    @include breakpoint(mobile) {
+      padding: 0 var(--w-spacing-md);
+    }
+  }
+
+  &__info {
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-lg);
+
+    @include breakpoint(mobile) {
+      gap: var(--w-spacing-md);
+    }
+  }
+
+  &__title {
+    font-size: clamp(var(--w-font-size-h3), 5vw, var(--w-font-size-h1));
+    font-weight: var(--w-font-weight-bold);
+    line-height: calc(clamp(var(--w-font-size-h3), 5vw, var(--w-font-size-h1)) * 1.1);
+    height: calc(clamp(var(--w-font-size-h3), 5vw, var(--w-font-size-h1)) * 1.1 * 2);
+    color: var(--w-text-color-light);
+    overflow: hidden;
+    -o-text-overflow: ellipsis;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    @include liquid-motion(all, 0.4s);
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-h2);
+      line-height: calc(var(--w-font-size-h2) * 1.1);
+      height: calc(var(--w-font-size-h2) * 1.1 * 2);
+    }
+  }
+
+  &__meta {
+    @include flex(row, flex-start, center);
+    flex-wrap: wrap;
+    gap: var(--w-spacing-md);
+
+    @include breakpoint(mobile) {
+      gap: var(--w-spacing-sm);
+    }
+  }
+
+  &__classification {
+    @include liquid-glass-base(0.3, var(--w-blur-xs));
+    padding: var(--w-spacing-xs) var(--w-spacing-md);
+    border-radius: var(--w-border-radius-md);
+    font-size: var(--w-font-size-sm);
+    font-weight: var(--w-font-weight-semibold);
+    line-height: 1.5;
+    color: var(--w-text-color-light);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    transform: translateZ(0);
+    @include liquid-motion(transform, 0.2s);
+
+    @include breakpoint(mobile) {
+      backdrop-filter: blur(4px); // Giảm blur
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px) translateZ(0);
+
+      @include breakpoint(mobile) {
+        transform: none; // Vô hiệu hoá hover trên mobile
+      }
+    }
+  }
+
+  &__imdb {
+    @include flex(row, center, center);
+    gap: var(--w-spacing-xs);
+    padding: var(--w-spacing-xs) var(--w-spacing-md);
+    border-radius: var(--w-border-radius-md);
+    font-size: var(--w-font-size-sm);
+    font-weight: var(--w-font-weight-semibold);
+    line-height: 1.5;
+    color: var(--w-text-color-light);
+    background: rgba(240, 209, 92, 0.15);
+    border: 1px solid rgba(240, 209, 92, 0.5);
+    backdrop-filter: blur(8px);
+    transform: translateZ(0);
+    @include liquid-motion(transform, 0.2s);
+
+    @include breakpoint(mobile) {
+      backdrop-filter: blur(4px);
+    }
+
+    &::before {
+      content: "IMDb";
+      font-size: var(--w-font-size-xs);
+      color: #f0d15c;
+      font-weight: var(--w-font-weight-bold);
+    }
+
+    &:hover {
+      background: rgba(240, 209, 92, 0.25);
+      transform: translateY(-2px) translateZ(0);
+
+      @include breakpoint(mobile) {
+        transform: none;
+      }
+    }
+  }
+
+  &__duration {
+    @include flex(row, center, center);
+    gap: var(--w-spacing-xs);
+    padding: var(--w-spacing-xs) var(--w-spacing-md);
+    color: var(--w-text-color-light);
+    font-size: var(--w-font-size-sm);
+    font-weight: var(--w-font-weight-medium);
+    @include liquid-glass-base(0.2, var(--w-blur-xs));
+    border-radius: var(--w-border-radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    transform: translateZ(0);
+    @include liquid-motion(transform, 0.2s);
+
+    @include breakpoint(mobile) {
+      backdrop-filter: blur(4px);
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px) translateZ(0);
+
+      @include breakpoint(mobile) {
+        transform: none;
+      }
+    }
+
+    &-icon {
+      font-size: var(--w-font-size-md);
+      opacity: 0.9;
+    }
+  }
+
+  &__description {
+    font-size: var(--w-font-size-lg);
+    line-height: 1.7;
+    color: var(--w-text-color-light);
+    @include text-truncate(3);
+    text-shadow:
+      1px 1px 3px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(0, 0, 0, 0.6);
+    opacity: 0.95;
+
+    @include breakpoint(mobile) {
+      display: none;
+    }
+  }
+
+  &__details {
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-sm);
+  }
+
+  &__genres {
+    font-size: var(--w-font-size-md);
+    color: var(--w-text-color-light);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+
+    &-label {
+      font-weight: var(--w-font-weight-semibold);
+      margin-right: var(--w-spacing-sm);
+      opacity: 0.9;
+    }
+
+    &-list {
+      font-weight: var(--w-font-weight-medium);
+      color: var(--w-primary-color);
+      text-shadow: 0 0 10px rgba(var(--w-primary-color-rgb), 0.5);
+    }
+  }
+
+  &__touch {
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-md);
+    flex-wrap: wrap;
+  }
+
+  &__play-btn {
+    @include flex(row, center, center);
+    width: 70px;
+    height: 70px;
+    border-radius: var(--w-border-radius-circle);
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg,
+        rgba(var(--w-primary-color-rgb), 1),
+        rgba(var(--w-primary-bg-subtle-rgb), 0.9));
+    color: #000;
+    box-shadow:
+      0 8px 24px rgba(var(--w-primary-color-rgb), 0.4),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+    @include liquid-motion(transform, 0.3s, var(--w-motion-easing-spring));
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+    will-change: transform;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center,
+          rgba(255, 255, 255, 0.3),
+          transparent 70%);
+      opacity: 0;
+      @include liquid-motion(opacity, 0.2s);
+    }
+
+    &:hover {
+      transform: translateY(-4px) scale(1.05) translateZ(0);
+      box-shadow:
+        0 12px 32px rgba(var(--w-primary-color-rgb), 0.5),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+
+      @include breakpoint(mobile) {
+        transform: translateZ(0); // Vô hiệu hoá hover trên mobile
+      }
+
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    &:active {
+      transform: translateY(-2px) scale(1.02) translateZ(0);
+    }
+
+    @include breakpoint(tablet-and-below) {
+      width: 56px;
+      height: 56px;
+    }
+
+    @include breakpoint(mobile) {
+      width: 50px;
+      height: 50px;
+    }
+  }
+
+  &__play-icon {
+    font-size: var(--w-font-size-xl);
+    margin-left: 2px;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-lg);
+    }
+  }
+
+  &__touch-group {
+    @include flex(row, stretch, center);
+    @include liquid-glass-base(0.2, var(--w-blur-xs));
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    transform: translateZ(0);
+    @include liquid-motion(border-color, 0.2s);
+
+    @include breakpoint(mobile) {
+      backdrop-filter: blur(6px);
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.15);
+
+      @include breakpoint(mobile) {
+        border-color: rgba(255, 255, 255, 0.2); // Giữ nguyên trên mobile
+        background: transparent;
+      }
+    }
+
+    .touch-btn {
+      @include flex(row, center, center);
+      min-width: 64px;
+      height: 50px;
+      padding: 0 var(--w-spacing-md);
+      background: transparent;
+      border: none;
+      color: var(--w-text-color-light);
+      cursor: pointer;
+      @include liquid-motion(color, 0.2s);
+      position: relative;
+      transform: translateZ(0);
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.1);
+        opacity: 0;
+        @include liquid-motion(opacity, 0.2s);
+      }
+
+      &+.touch-btn {
+        border-left: 2px solid rgba(255, 255, 255, 0.15);
+      }
+
+      &:hover:not(.disabled) {
+        color: var(--w-primary-color);
+
+        &::before {
+          opacity: 1;
+        }
+
+        @include breakpoint(mobile) {
+          color: var(--w-text-color-light); // Giữ nguyên màu
+          
+          &::before {
+            opacity: 0;
+          }
+        }
+      }
+
+      &.active {
+        color: var(--w-primary-color);
+
+        &::before {
+          opacity: 1;
+        }
+      }
+
+      &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      svg {
+        font-size: var(--w-font-size-lg);
+      }
+
+      @include breakpoint(tablet-and-below) {
+        min-width: 56px;
+        height: 44px;
+        padding: 0 var(--w-spacing-sm);
+      }
+    }
+  }
+
+  &__right {
+    flex: 0 0 420px;
+    max-width: 420px;
+    align-self: flex-end;
+    padding-bottom: var(--w-spacing-lg);
+
+    @include breakpoint(desktop) {
+      flex: 0 0 380px;
+      max-width: 380px;
+    }
+
+    @include breakpoint(tablet-and-below) {
+      flex: none;
+      max-width: 100%;
+      width: 100%;
+      padding: 0 var(--w-spacing-lg);
+    }
+
+    @include breakpoint(mobile) {
+      padding: 0 var(--w-spacing-md);
+    }
+  }
+
+  &__carousel {
+    position: relative;
+    overflow: visible;
+  }
+
+  &__swiper {
+    width: 100%;
+    padding: var(--w-spacing-xl) var(--w-spacing-lg);
+    margin: calc(var(--w-spacing-xl) * -1) calc(var(--w-spacing-md) * -1);
+    overflow: hidden;
+    contain: layout style;
+
+    @include breakpoint(tablet-and-below) {
+      padding: var(--w-spacing-lg) var(--w-spacing-md);
+      margin: 0 auto;
+    }
+
+    .swiper-wrapper {
+      align-items: center;
+    }
+
+    .swiper-slide {
+      @include liquid-motion(transform, 0.25s, ease-out);
+      height: auto;
+      transform: translateZ(0);
+      will-change: transform;
+    }
+  }
+
+  &__slide {
+    &--active {
+      z-index: 10;
+    }
+  }
+
+  &__card {
+    width: 100%;
+    cursor: pointer;
+    border-radius: var(--w-border-radius-lg);
+    overflow: hidden;
+    position: relative;
+    @include liquid-motion(transform, 0.25s, ease-out);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+    transform-origin: center center;
+    transform: translateZ(0);
+    will-change: transform;
+    contain: layout style paint;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg,
+          transparent 50%,
+          rgba(0, 0, 0, 0.8) 100%);
+      opacity: 0;
+      @include liquid-motion(opacity, 0.2s);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    &:hover:not(&--active) {
+      transform: scale(1.08) translateY(-8px) translateZ(0);
+      box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 2px rgba(var(--w-primary-color-rgb), 0.5);
+
+      @include breakpoint(tablet-and-below) {
+        transform: scale(1.02) translateY(-4px) translateZ(0); // Giảm hiệu ứng
+        box-shadow:
+          0 6px 12px rgba(0, 0, 0, 0.4),
+          0 0 0 1px rgba(var(--w-primary-color-rgb), 0.5);
+      }
+
+      @include breakpoint(mobile) {
+        transform: translateZ(0); // Vô hiệu hoá hoàn toàn trên mobile
+        box-shadow:
+          0 4px 16px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(255, 255, 255, 0.1);
+      }
+
+      &::before {
+        opacity: 1;
+
+        @include breakpoint(mobile) {
+          opacity: 0; // Vô hiệu hoá overlay
+        }
+      }
+
+      .hero-movie__card-image {
+        transform: scale(1.1);
+
+        @include breakpoint(mobile) {
+          transform: scale(1); // Không scale ảnh
+        }
+      }
+    }
+
+    &--active {
+      transform: scale(1.15) translateY(-12px) translateZ(0);
+      box-shadow:
+        0 6px 12px rgba(var(--w-primary-color-rgb), 0.6),
+        0 0 0 3px var(--w-primary-color),
+        0 0 20px rgba(var(--w-primary-color-rgb), 0.4);
+      z-index: 10;
+
+      @include breakpoint(tablet-and-below) {
+        transform: scale(1.05) translateY(-6px) translateZ(0);
+        box-shadow:
+          0 3px 8px rgba(var(--w-primary-color-rgb), 0.6),
+          0 0 0 2px var(--w-primary-color),
+          0 0 8px rgba(var(--w-primary-color-rgb), 0.4);
+      }
+
+      @include breakpoint(mobile) {
+        transform: scale(1.02) translateZ(0); // Chỉ scale nhẹ
+        box-shadow:
+          0 2px 6px rgba(var(--w-primary-color-rgb), 0.6),
+          0 0 0 2px var(--w-primary-color);
+      }
+
+      &::before {
+        opacity: 1;
+
+        @include breakpoint(mobile) {
+          opacity: 0.5; // Giảm opacity
+        }
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      &:hover:not(&--active),
+      &--active {
+        transform: translateZ(0);
+      }
+    }
+  }
+
+  &__card-poster {
+    position: relative;
+    width: 100%;
+    padding-top: 150%;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    background: var(--w-background-color-dark);
+    contain: strict;
+  }
+
+  &__card-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    @include liquid-motion(transform, 0.3s, ease-out);
+    transform: translateZ(0);
+    will-change: transform;
+    opacity: 0;
+
+    &.loaded {
+      opacity: 1;
+      transition: opacity 0.3s ease-out;
+    }
+  }
+
+  &__skeleton {
+    background: linear-gradient(90deg,
+        var(--w-background-color-dark) 0%,
+        var(--w-background-color-light) 50%,
+        var(--w-background-color-dark) 100%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--w-border-radius);
+    position: relative;
+    overflow: hidden;
+
+    &--background {
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+    }
+
+    &--title {
+      height: 48px;
+      width: 70%;
+      margin-bottom: var(--w-spacing-lg);
+
+      @include breakpoint(mobile) {
+        height: 36px;
+        width: 80%;
+      }
+    }
+
+    &--meta {
+      height: 32px;
+      width: 80px;
+      border-radius: var(--w-border-radius-md);
+    }
+
+    &--description {
+      height: 20px;
+      width: 100%;
+      margin-bottom: var(--w-spacing-sm);
+    }
+
+    &--description-short {
+      height: 20px;
+      width: 75%;
+      margin-bottom: var(--w-spacing-lg);
+    }
+
+    &--genres {
+      height: 24px;
+      width: 60%;
+      margin-bottom: var(--w-spacing-xl);
+    }
+
+    &--play-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: var(--w-border-radius-circle);
+
+      @include breakpoint(tablet-and-below) {
+        width: 56px;
+        height: 56px;
+      }
+    }
+
+    &--touch-group {
+      width: 160px;
+      height: 50px;
+      border-radius: 50px;
+
+      @include breakpoint(tablet-and-below) {
+        width: 140px;
+        height: 44px;
+      }
+    }
+
+    &-carousel {
+      @include flex(row, flex-start, stretch);
+      gap: var(--w-spacing-md);
+      width: 100%;
+    }
+
+    &-card {
+      flex-shrink: 0;
+      width: 125px;
+
+      @include breakpoint(mobile) {
+        width: 100px;
+      }
+    }
+
+    &--card-poster {
+      width: 100%;
+      padding-top: 150%;
+      border-radius: var(--w-border-radius-lg);
+    }
+  }
+
+  // ====================================
+  // 📱 RESPONSIVE ADJUSTMENTS
+  // ====================================
+
+  @include breakpoint(tablet) {
+    &__card {
+      width: 90px;
+    }
+  }
+
+  @include breakpoint(mobile) {
+    &__card {
+      width: 80px;
+    }
+  }
+
+  @include breakpoint(xs) {
+    &__card {
+      width: 70px;
+    }
+  }
+}
+
+// ====================================
+// 🎨 ANIMATIONS
+// ====================================
+
+@keyframes fadeInImage {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.25;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@include floating-element-animations;

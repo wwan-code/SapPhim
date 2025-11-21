@@ -1,0 +1,308 @@
+/**
+ * 🌊 LIQUID GLASS NOTIFICATION ITEM
+ * 
+ * Features:
+ * - Glass surface with hover bend effect
+ * - Ripple animation on click
+ * - Parallax depth on hover (lift + shadow)
+ * - Smooth micro-interactions
+ * - Physical response (press, release)
+ * - Accessibility compliant
+ */
+
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--w-spacing-md);
+  padding: var(--w-spacing-md);
+  border-radius: var(--w-border-radius-lg);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: rgba(var(--w-background-color-rgb), 0.02);
+  
+  @include liquid-motion(all, 0.3s, var(--w-motion-easing-spring));
+  
+  will-change: transform, box-shadow, background-color;
+
+  &__glass-reflection {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 30%,
+      transparent 60%
+    );
+    pointer-events: none;
+    opacity: 0;
+    @include liquid-motion(opacity, 0.3s);
+    z-index: 1;
+  }
+
+  &:hover {
+    background: rgba(var(--w-background-color-rgb), 0.08);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 2px 6px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    
+    .notification-item__glass-reflection {
+      opacity: 1;
+    }
+
+    .notification-item__avatar,
+    .notification-item__icon-wrapper {
+      transform: scale(1.05);
+    }
+
+    .notification-item__btn--delete {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 0.1s;
+  }
+
+  // ============================================
+  // UNREAD STATE - Glass glow
+  // ============================================
+  &--unread {
+    background: rgba(var(--w-primary-color-rgb), 0.06);
+    
+    // Glow border
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(
+        135deg,
+        rgba(var(--w-primary-color-rgb), 0.3),
+        transparent 50%
+      );
+      -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+      mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    &:hover {
+      background: rgba(var(--w-primary-color-rgb), 0.1);
+    }
+  }
+
+  &__ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(var(--w-primary-color-rgb), 0.4) 0%,
+      rgba(var(--w-primary-color-rgb), 0.2) 40%,
+      transparent 70%
+    );
+    transform: translate(-50%, -50%) scale(0);
+    animation: rippleExpand 0.6s var(--w-motion-easing-spring);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  // ============================================
+  // AVATAR CONTAINER - Parallax depth
+  // ============================================
+  &__avatar-container {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    z-index: 3;
+  }
+
+  &__avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--w-border-radius-circle);
+    object-fit: cover;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    @include liquid-motion(all, 0.3s, var(--w-motion-easing-spring));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &__icon-wrapper {
+    @include flex(row, center, center);
+    width: 100%;
+    height: 100%;
+    border-radius: var(--w-border-radius-circle);
+    background: rgba(var(--w-background-color-rgb), 0.1);
+    color: var(--w-text-color-light);
+    font-size: var(--w-font-size-lg);
+    @include liquid-motion(all, 0.3s, var(--w-motion-easing-spring));
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  &__content {
+    flex: 1;
+    padding-right: var(--w-spacing-lg);
+    position: relative;
+    z-index: 3;
+  }
+
+  &__body {
+    margin: 0 0 var(--w-spacing-xs) 0;
+    font-size: var(--w-font-size-md);
+    line-height: 1.5;
+    color: var(--w-text-color);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    @include text-truncate(2);
+  }
+
+  &__time {
+    font-size: var(--w-font-size-xs);
+    color: var(--w-text-color-light);
+    opacity: 0.8;
+  }
+
+  // ============================================
+  // ACTIONS - Delete button + unread indicator
+  // ============================================
+  &__actions {
+    position: absolute;
+    top: var(--w-spacing-sm);
+    right: var(--w-spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--w-spacing-xs);
+    z-index: 4;
+  }
+
+  &__btn {
+    &--delete {
+      @include flex(row, center, center);
+      width: 28px;
+      height: 28px;
+      border-radius: var(--w-border-radius-circle);
+      background-color: transparent;
+      color: var(--w-text-color-light);
+      border: none;
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(0.8);
+      @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+      
+      // Glass background
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: rgba(var(--w-background-color-rgb), 0.1);
+        opacity: 0;
+        @include liquid-motion(opacity, 0.2s);
+      }
+
+      &:hover {
+        background-color: var(--w-danger-color);
+        color: var(--w-white);
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(var(--w-danger-color-rgb), 0.4);
+        
+        &::before {
+          opacity: 0; // Hide glass on danger color
+        }
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      @include focus-visible();
+    }
+  }
+
+  &__unread-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--w-border-radius-circle);
+    background: radial-gradient(
+      circle,
+      var(--w-primary-color) 0%,
+      var(--w-primary-color) 60%,
+      rgba(var(--w-primary-color-rgb), 0.5) 100%
+    );
+    border: 2px solid var(--w-background-color);
+    box-shadow: 
+      0 0 8px rgba(var(--w-primary-color-rgb), 0.6),
+      0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: pulse-bg 2s ease-in-out infinite;
+  }
+
+  // ============================================
+  // FOCUS STATE - Accessibility
+  // ============================================
+  @include focus-visible();
+
+  &:focus-visible {
+    outline-offset: 2px;
+    box-shadow: 
+      0 0 0 3px rgba(var(--w-primary-color-rgb), 0.3),
+      0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  // ============================================
+  // ACCESSIBILITY - Reduce Motion
+  // ============================================
+  @media (prefers-reduced-motion: reduce) {
+    transition: background-color 0.2s ease, opacity 0.2s ease !important;
+    transform: none !important;
+
+    &:hover,
+    &:active {
+      transform: none !important;
+    }
+
+    .notification-item__avatar,
+    .notification-item__icon-wrapper,
+    .notification-item__btn--delete {
+      transform: none !important;
+      transition: opacity 0.2s ease !important;
+    }
+
+    .notification-item__ripple {
+      display: none;
+    }
+
+    .notification-item__unread-indicator {
+      animation: none !important;
+    }
+  }
+}
+
+// --- Ripple Expand ---
+@keyframes rippleExpand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+  }
+}
+

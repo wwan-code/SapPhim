@@ -1,0 +1,186 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.friend-request-list-container {
+  @include flex(column, flex-start, stretch);
+  gap: var(--w-spacing-lg);
+  animation: fadeInUp 0.4s ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.friend-request-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--w-spacing-md);
+  width: 100%;
+
+  @include breakpoint(mobile) {
+    grid-template-columns: 1fr;
+    gap: var(--w-spacing-sm);
+  }
+
+  @include breakpoint(tablet) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--w-spacing-md);
+  }
+
+  @include breakpoint(desktop) {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+}
+
+// 🌊 LOAD MORE BUTTON
+.friend-request-list__load-more {
+  @include flex(row, center, center);
+  padding: var(--w-spacing-md) 0;
+}
+
+.friend-request-list__load-more-btn {
+  @include flex(row, center, center);
+  gap: var(--w-spacing-sm);
+  padding: var(--w-spacing-sm) var(--w-spacing-lg);
+  border: none;
+  border-radius: var(--w-border-radius-lg);
+  font-size: var(--w-font-size-sm);
+  font-weight: var(--w-font-weight-medium);
+  color: var(--w-primary-color);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--w-primary-color-rgb), 0.12),
+    rgba(var(--w-primary-color-rgb), 0.08)
+  );
+  border: 1px solid rgba(var(--w-primary-color-rgb), 0.25);
+  cursor: pointer;
+  @include transition(all, var(--w-motion-duration-fast), var(--w-motion-easing-spring));
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(var(--w-blur-sm));
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba(var(--w-primary-color-rgb), 0.2) 0%,
+      transparent 70%
+    );
+    opacity: 0;
+    @include transition(opacity, 0.3s);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(var(--w-primary-color-rgb), 0.25);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--w-primary-color-rgb), 0.18),
+      rgba(var(--w-primary-color-rgb), 0.12)
+    );
+
+    &::before {
+      opacity: 1;
+    }
+
+    i {
+      animation: bounce 0.6s ease-in-out infinite;
+    }
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  @include focus-visible();
+
+  i {
+    font-size: var(--w-font-size-sm);
+    @include transition(transform, 0.3s);
+  }
+
+  @include breakpoint(mobile) {
+    padding: var(--w-spacing-xs) var(--w-spacing-md);
+    font-size: var(--w-font-size-xs);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover {
+      transform: none;
+
+      i {
+        animation: none;
+      }
+    }
+
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+// 🎨 EMPTY STATE
+.friend-request-list-empty {
+  @include flex(column, center, center);
+  gap: var(--w-spacing-md);
+  padding: var(--w-spacing-xxl) var(--w-spacing-lg);
+  text-align: center;
+  border-radius: var(--w-border-radius-xl);
+  animation: fadeInScale 0.5s ease-out;
+
+  @include breakpoint(mobile) {
+    padding: var(--w-spacing-xl) var(--w-spacing-md);
+    gap: var(--w-spacing-sm);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  &__icon {
+    font-size: 4rem;
+    color: var(--w-text-color-light);
+    opacity: 0.5;
+    animation: float 3s ease-in-out infinite;
+
+    @include breakpoint(mobile) {
+      font-size: 3rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  &__title {
+    font-size: var(--w-font-size-xl);
+    font-weight: var(--w-font-weight-semibold);
+    color: var(--w-text-color);
+    margin: 0;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-lg);
+    }
+  }
+
+  &__message {
+    font-size: var(--w-font-size-sm);
+    color: var(--w-text-color-light);
+    margin: 0;
+    max-width: 400px;
+    opacity: 0.8;
+
+    @include breakpoint(mobile) {
+      font-size: var(--w-font-size-xs);
+    }
+  }
+}
+

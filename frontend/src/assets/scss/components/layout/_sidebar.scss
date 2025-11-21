@@ -1,0 +1,667 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--w-zindex-offcanvas);
+  pointer-events: none;
+
+  &:not(.sidebar--open) {
+    .sidebar__backdrop {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .sidebar__content {
+      transform: translateX(-100%) scaleX(0.96);
+      opacity: 0;
+    }
+
+    // .sidebar__nav-link {
+    //   opacity: 0;
+    //   transform: translateX(-10px);
+    // }
+  }
+
+  &--open {
+    pointer-events: all;
+
+    .sidebar__backdrop {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: all;
+    }
+
+    .sidebar__content {
+      @include sidebar-shell-animate('open');
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar__backdrop,
+    .sidebar__content,
+    .sidebar__nav-link {
+      transition: opacity var(--w-motion-duration-fast) ease,
+                  visibility var(--w-motion-duration-fast) ease,
+                  transform var(--w-motion-duration-fast) ease !important;
+      animation: none !important;
+    }
+  }
+}
+
+.sidebar__backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  
+  @include sidebar-backdrop-blur($opacity: 0.4, $blur: var(--w-blur-sm));
+  
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--w-motion-duration-medium) var(--w-motion-easing-elegant),
+    visibility var(--w-motion-duration-medium) var(--w-motion-easing-elegant);
+
+  // Reduced Motion: Rút gọn animation
+  @media (prefers-reduced-motion: reduce) {
+    transition:
+      opacity var(--w-motion-duration-fast) ease,
+      visibility var(--w-motion-duration-fast) ease;
+  }
+
+  // Reduced Transparency: Tăng độ đục
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: rgba(var(--w-background-color-rgb), 0.92);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.sidebar__content {
+  position: relative;
+  width: var(--w-sidebar-width-desktop);
+  max-width: 85%;
+  height: 100%;
+  z-index: 1;
+  
+  @include flex(column, flex-start, stretch);
+
+  @include liquid-glass-base(
+    $opacity: var(--w-glass-opacity-medium),
+    $blur: var(--w-blur-sm),
+    $saturation: 180%,
+    $tint: null
+  );
+
+  @include liquid-glass-shadow($depth: 'elevated');
+  
+  // border-right: 1px solid var(--w-glass-border-light);
+  padding: var(--w-spacing-lg);
+  
+  transition:
+    transform var(--w-motion-duration-medium) var(--w-motion-easing-spring),
+    opacity var(--w-motion-duration-medium) var(--w-motion-easing-spring),
+    background-color var(--w-motion-duration-medium) var(--w-motion-easing-spring),
+    backdrop-filter var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+
+  @include breakpoint(mobile) {
+    width: var(--w-sidebar-width-mobile);
+    padding: var(--w-spacing-md);
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    @supports not (-webkit-backdrop-filter: blur(1px)) {
+      background-color: rgba(var(--w-background-color-rgb), 0.96);
+      background: linear-gradient(
+        135deg,
+        rgba(var(--w-background-color-rgb), 0.94) 0%,
+        rgba(var(--w-background-color-rgb), 0.98) 100%
+      );
+      border: 1px solid var(--w-border-color);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(var(--w-background-color-rgb), 0.96);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition:
+      transform var(--w-motion-duration-fast) ease,
+      opacity var(--w-motion-duration-fast) ease;
+  }
+}
+
+.sidebar__header {
+  @include flex(row, space-between, center);
+  margin-bottom: var(--w-spacing-lg);
+  gap: var(--w-spacing-md);
+
+  @include breakpoint(mobile) {
+    margin-bottom: var(--w-spacing-md);
+  }
+}
+
+.sidebar__logo {
+  @include flex(row, flex-start, center);
+  gap: var(--w-spacing-sm);
+  text-decoration: none;
+  color: var(--w-text-color-light);
+  font-size: var(--w-font-size-lg);
+  font-weight: var(--w-font-weight-bold);
+
+  @include liquid-motion(transform, var(--w-motion-duration-fast));
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  @include focus-visible();
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover,
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+.sidebar__logo-img {
+  height: 44px;
+  width: auto;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+
+  @include liquid-motion(filter);
+
+  .sidebar__logo:hover & {
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+  }
+
+  @include breakpoint(mobile) {
+    height: 28px;
+  }
+}
+
+.sidebar__logo-text {
+  display: inline-block;
+}
+
+.sidebar__close-btn {
+  @include flex(row, center, center);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--w-text-color-light);
+  font-size: var(--w-font-size-xl);
+  cursor: pointer;
+  border-radius: var(--w-border-radius-lg);
+
+  @include liquid-glass-ripple();
+  @include liquid-motion(all, var(--w-motion-duration-fast));
+
+  &:hover {
+    background-color: rgba(var(--w-background-color-rgb), 0.1);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+
+  @include focus-visible();
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover,
+    &:active {
+      transform: none;
+    }
+  }
+
+  i {
+    font-size: inherit;
+  }
+
+  @include breakpoint(mobile) {
+    width: 36px;
+    height: 36px;
+    font-size: var(--w-font-size-lg);
+  }
+}
+
+// ============================================================================
+// 🔍 SEARCH SECTION
+// ============================================================================
+
+.sidebar__search {
+  @include flex(row, flex-start, center);
+  margin-bottom: var(--w-spacing-lg);
+
+  @include breakpoint(mobile) {
+    margin-bottom: var(--w-spacing-md);
+  }
+}
+
+// ============================================================================
+// 🧭 NAVIGATION - Container với Indicator
+// ============================================================================
+
+.sidebar__nav {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; // Fix flexbox overflow issue
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  // Custom scrollbar styling
+  @include sidebar-scroll-style();
+}
+
+// ===== NAV CONTAINER (Relative positioning cho indicator) =====
+.sidebar__nav-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate; // Tạo stacking context mới
+}
+
+// ===== NAV LIST =====
+.sidebar__nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--w-spacing-xs);
+  position: relative;
+  z-index: 1; // Above indicator
+
+  li {
+    position: relative;
+  }
+}
+
+// ============================================================================
+// 💊 ANIMATED INDICATOR PILL - Vertical Glass Bar
+// ============================================================================
+
+// ============================================================================
+// 🔗 NAV LINK - Individual Menu Item (với CSS-only indicator)
+// ============================================================================
+
+.sidebar__nav-link {
+  @include flex(row, flex-start, center);
+  gap: var(--w-spacing-sm);
+  padding: var(--w-spacing-sm) var(--w-spacing-md);
+  color: var(--w-text-color-light);
+  text-decoration: none;
+  font-weight: var(--w-font-weight-medium);
+  font-size: var(--w-font-size-md);
+  border-radius: var(--w-border-radius-lg);
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+
+  @include liquid-motion(all, var(--w-motion-duration-fast));
+  @include liquid-glass-tint();
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--w-glass-tint-heavy);
+    opacity: 0;
+    transition: opacity var(--w-motion-duration-fast) ease-out;
+    z-index: -1;
+  }
+
+  // ===== HOVER STATE =====
+  &:hover:not(.sidebar__nav-link--active) {
+    color: var(--w-text-color-light);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateX(3px) scale(0.98);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 0;
+    border-radius: var(--w-border-radius-xl);
+    background: linear-gradient(
+      180deg,
+      var(--w-primary-color) 0%,
+      var(--w-primary-color-hover) 100%
+    );
+    opacity: 0;
+    transition: 
+      height var(--w-motion-duration-medium) var(--w-motion-easing-spring),
+      opacity var(--w-motion-duration-fast) ease-out;
+    z-index: -1;
+  }
+
+  &.sidebar__nav-link--active,
+  &[aria-current='page'] {
+    color: var(--w-text-color-light);
+    font-weight: var(--w-font-weight-semibold);
+    background-color: rgba(var(--w-primary-color-rgb), 0.12);
+    
+    &::after {
+      height: calc(100% - var(--w-spacing-md));
+      opacity: 1;
+    }
+  }
+
+  // ===== FOCUS VISIBLE =====
+  @include focus-visible();
+
+  // ===== ACCESSIBILITY: Reduced Motion =====
+  @media (prefers-reduced-motion: reduce) {
+    &:hover,
+    &:active {
+      transform: none;
+    }
+
+    &::before,
+    &::after {
+      transition: none;
+    }
+  }
+
+  // ===== RESPONSIVE: Mobile =====
+  @include breakpoint(mobile) {
+    padding: var(--w-spacing-sm);
+    font-size: var(--w-font-size-sm);
+    gap: var(--w-spacing-xs);
+  }
+
+  // ===== DARK MODE: Tăng contrast =====
+  [data-ww-theme="dark"] & {
+    &.sidebar__nav-link--active {
+      background-color: rgba(var(--w-primary-color-rgb), 0.18);
+    }
+  }
+}
+
+// ============================================================================
+// 🎨 NAV ICON - FontAwesome hoặc SVG
+// ============================================================================
+
+.sidebar__nav-icon {
+  @include flex(row, center, center);
+  width: 20px;
+  height: 20px;
+  font-size: var(--w-font-size-lg);
+  color: inherit;
+  flex-shrink: 0;
+
+  // ===== SVG VARIANT =====
+  &--svg {
+    svg {
+      width: 100%;
+      height: 100%;
+      color: inherit;
+      fill: currentColor;
+    }
+  }
+
+  @include breakpoint(mobile) {
+    width: 18px;
+    height: 18px;
+    font-size: var(--w-font-size-md);
+  }
+}
+
+// ============================================================================
+// 📝 NAV LABEL - Menu Text
+// ============================================================================
+
+.sidebar__nav-label {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+// ============================================================================
+// 📍 FOOTER - Copyright & Social Links
+// ============================================================================
+
+.sidebar__footer {
+  padding-top: var(--w-spacing-lg);
+  border-top: 1px solid rgba(var(--w-text-color-rgb), 0.1);
+  margin-top: auto; // Push to bottom
+
+  @include breakpoint(mobile) {
+    padding-top: var(--w-spacing-md);
+  }
+}
+
+// ===== FOOTER INFO TEXT =====
+.sidebar__footer-info {
+  font-size: var(--w-font-size-sm);
+  color: var(--w-text-color-light);
+  text-align: center;
+  line-height: 1.6;
+  opacity: 0.8;
+
+  p {
+    margin: 0 0 var(--w-spacing-xs);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  @include breakpoint(mobile) {
+    font-size: var(--w-font-size-xs);
+  }
+}
+
+// ===== SOCIAL LINKS =====
+.sidebar__social-links {
+  @include flex(row, center, center);
+  gap: var(--w-spacing-md);
+  margin-top: var(--w-spacing-md);
+
+  a {
+    @include flex(row, center, center);
+    width: 36px;
+    height: 36px;
+    color: var(--w-text-color-light);
+    font-size: var(--w-font-size-lg);
+    text-decoration: none;
+    border-radius: var(--w-border-radius-lg);
+    opacity: 0.7;
+
+    @include liquid-motion(all, var(--w-motion-duration-fast));
+    @include liquid-glass-ripple();
+
+    &:hover {
+      color: var(--w-primary-color);
+      background-color: rgba(var(--w-primary-color-rgb), 0.15);
+      opacity: 1;
+      transform: translateY(-2px) scale(1.05);
+    }
+
+    &:active {
+      transform: translateY(0) scale(0.95);
+    }
+
+    @include focus-visible();
+
+    @media (prefers-reduced-motion: reduce) {
+      &:hover,
+      &:active {
+        transform: none;
+      }
+    }
+  }
+
+  @include breakpoint(mobile) {
+    gap: var(--w-spacing-sm);
+
+    a {
+      width: 32px;
+      height: 32px;
+      font-size: var(--w-font-size-md);
+    }
+  }
+}
+
+// ============================================================================
+// ♿ ACCESSIBILITY - High Contrast Mode
+// ============================================================================
+
+@media (prefers-contrast: high) {
+  .sidebar__content {
+    border: 2px solid var(--w-text-color-light);
+  }
+
+  .sidebar__indicator {
+    width: 5px;
+    border: 1px solid var(--w-text-color-light);
+  }
+
+  .sidebar__nav-link {
+    border: 1px solid transparent;
+
+    &.sidebar__nav-link--active {
+      border-color: var(--w-primary-color);
+      background-color: var(--w-primary-color);
+      color: var(--w-background-color);
+    }
+  }
+
+  .sidebar__footer {
+    border-top-width: 2px;
+  }
+}
+
+// ============================================================================
+// 🖨️ PRINT STYLES - Ẩn sidebar khi in
+// ============================================================================
+
+@media print {
+  .sidebar {
+    display: none !important;
+  }
+}
+
+// ============================================================================
+// 📱 TOUCH DEVICE OPTIMIZATIONS
+// ============================================================================
+
+@media (hover: none) and (pointer: coarse) {
+  // Touch devices: Tăng tap target size
+  .sidebar__nav-link {
+    min-height: 48px; // WCAG AA minimum
+    padding: var(--w-spacing-md);
+  }
+
+  .sidebar__close-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .sidebar__social-links a {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  // Disable hover effects (không có hover trên touch)
+  .sidebar__nav-link:hover {
+    transform: none;
+  }
+
+  // Enhanced active feedback
+  .sidebar__nav-link:active {
+    opacity: 0.7;
+  }
+}
+
+// ============================================================================
+// 🎬 ANIMATION KEYFRAMES (Included via mixin)
+// ============================================================================
+
+// Các keyframes đã được định nghĩa trong _mixins.scss:
+// - sidebarShellOpen
+// - sidebarShellClose
+// - sidebarShellOpenSimple
+// - sidebarShellCloseSimple
+// - sidebarItemFadeIn
+// - sidebarItemFadeInSimple
+// - ripple-expand
+
+// ============================================================================
+// 🔧 UTILITY CLASSES (Optional)
+// ============================================================================
+
+// Loading state (nếu cần)
+.sidebar--loading {
+  .sidebar__nav-link {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+// ============================================================================
+// 🎯 PERFORMANCE OPTIMIZATIONS
+// ============================================================================
+
+// GPU acceleration cho animated elements
+.sidebar__content,
+.sidebar__indicator,
+.sidebar__nav-link {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Will-change hints (sử dụng cẩn thận)
+.sidebar--open {
+  .sidebar__indicator {
+    will-change: top, height, opacity;
+  }
+
+  .sidebar__nav-link {
+    will-change: transform, opacity;
+  }
+}
+
+// Remove will-change sau animation hoàn tất
+.sidebar:not(.sidebar--open) {
+  .sidebar__indicator,
+  .sidebar__nav-link {
+    will-change: auto;
+  }
+}

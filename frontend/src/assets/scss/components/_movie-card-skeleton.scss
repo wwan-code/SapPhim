@@ -1,0 +1,169 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+// Enhanced skeleton shimmer mixin
+@mixin skeleton-shimmer($width: 100%, $height: 16px, $border-radius: var(--w-border-radius)) {
+    width: $width;
+    height: $height;
+    border-radius: $border-radius;
+    @include shimmer-animation;
+    background: linear-gradient(
+      90deg,
+      var(--w-background-color-dark) 0%,
+      var(--w-background-color-light) 20%,
+      var(--w-background-color-dark) 40%,
+      var(--w-background-color-dark) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.movie-card-skeleton {
+    display: block;
+    background-color: transparent;
+    border-radius: var(--w-border-radius-lg);
+    overflow: hidden;
+    position: relative;
+    animation: fadeIn 0.3s ease-out both;
+    opacity: 0.9;
+
+    &__cover-wrap {
+        position: relative;
+        padding-top: 150%;
+        aspect-ratio: 2 / 3;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius-lg);
+        overflow: hidden;
+        @include liquid-glass-shadow('light');
+
+        .movie-card-skeleton--horizontal & {
+            padding-top: 56.25%;
+            aspect-ratio: 16 / 9;
+        }
+    }
+
+    &__image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        @include skeleton-shimmer(100%, 100%, var(--w-border-radius-lg));
+    }
+
+    &__quality-badge {
+        position: absolute;
+        top: var(--w-spacing-sm);
+        right: var(--w-spacing-sm);
+        @include skeleton-shimmer(50px, 20px, var(--w-border-radius));
+        animation-delay: 0.1s;
+        z-index: 2;
+    }
+
+    &__info {
+        padding: var(--w-spacing-sm) 0;
+    }
+
+    &__title {
+        @include skeleton-shimmer(85%, 20px, var(--w-border-radius));
+        margin-bottom: var(--w-spacing-sm);
+        animation-delay: 0.15s;
+    }
+
+    &__meta {
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-sm);
+    }
+
+    &__year {
+        @include skeleton-shimmer(40px, 14px, var(--w-border-radius));
+        animation-delay: 0.2s;
+    }
+
+    &__category {
+        @include skeleton-shimmer(60px, 14px, var(--w-border-radius));
+        animation-delay: 0.25s;
+    }
+
+    // Mini version styling
+    &--mini {
+        @include flex(row, flex-start, stretch);
+        gap: var(--w-spacing-md);
+
+        .movie-card-skeleton__cover-wrap {
+            flex-shrink: 0;
+            width: 120px;
+            padding-top: 67.5%;
+            height: 68px;
+        }
+
+        .movie-card-skeleton__info {
+            padding: 0;
+            flex: 1;
+            @include flex(column, center, flex-start);
+        }
+
+        .movie-card-skeleton__title {
+            @include skeleton-shimmer(80%, 16px, var(--w-border-radius));
+            margin-bottom: var(--w-spacing-xs);
+        }
+
+        .movie-card-skeleton__year {
+            @include skeleton-shimmer(35px, 12px, var(--w-border-radius));
+        }
+
+        .movie-card-skeleton__category {
+            @include skeleton-shimmer(50px, 12px, var(--w-border-radius));
+        }
+
+        .movie-card-skeleton__quality-badge {
+            top: 4px;
+            right: 4px;
+            @include skeleton-shimmer(45px, 16px, var(--w-border-radius));
+        }
+    }
+
+    // Responsive adjustments
+    @include breakpoint(mobile) {
+        &__title {
+            @include skeleton-shimmer(90%, 18px, var(--w-border-radius));
+        }
+
+        &--mini {
+            .movie-card-skeleton__cover-wrap {
+                width: 100px;
+                height: 56px;
+            }
+
+            .movie-card-skeleton__title {
+                @include skeleton-shimmer(85%, 14px, var(--w-border-radius));
+            }
+        }
+    }
+
+    // Accessibility: Respect prefers-reduced-motion
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+
+        .skeleton-shimmer,
+        &__image,
+        &__title,
+        &__year,
+        &__category,
+        &__quality-badge {
+            animation: none;
+            background: var(--w-background-color-dark);
+        }
+    }
+
+    // High contrast mode
+    @media (prefers-contrast: high) {
+        &__image,
+        &__title,
+        &__year,
+        &__category,
+        &__quality-badge {
+            border: 1px solid var(--w-border-color);
+        }
+    }
+}

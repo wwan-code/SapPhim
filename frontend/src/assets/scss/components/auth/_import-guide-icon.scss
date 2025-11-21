@@ -1,0 +1,38 @@
+@use '../../_variables' as *;
+@use '../../_mixins' as *;
+
+.auth-popup__guide-icon {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--w-text-color-light);
+  cursor: pointer;
+  @include flex(row, center, center);
+  @include liquid-motion(all, var(--w-motion-duration-fast));
+  border-radius: 50%;
+  padding: 0;
+  margin-left: var(--w-spacing-xs);
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--w-primary-color);
+    background-color: rgba(var(--w-primary-color-rgb), 0.1);
+    transform: scale(1.15);
+  }
+
+  &:focus {
+    outline: 2px solid var(--w-primary-color);
+    outline-offset: 2px;
+    color: var(--w-primary-color);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.auth-popup__guide-icon-svg {
+  font-size: 20px;
+  display: block;
+}

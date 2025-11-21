@@ -1,0 +1,112 @@
+@use '../mixins' as *;
+
+.upload-cover-modal {
+  // Styles for the content within the common Modal component
+  @include flex(column, flex-start, stretch);
+  gap: var(--w-spacing-lg);
+  padding: var(--w-spacing-xl); // Adjust padding as needed for the content inside the modal
+
+  @include breakpoint(mobile) {
+    padding: var(--w-spacing-md);
+  }
+
+  // The title is now handled by the common Modal component, but we can still style elements within the modal content
+  // .w-modal__title {
+  //   font-size: var(--w-font-size-h3);
+  //   color: var(--w-text-color);
+  //   text-align: center;
+  //   margin-bottom: var(--w-spacing-md);
+  // }
+
+  &__preview-wrapper {
+    width: 100%;
+    aspect-ratio: 16 / 5;
+    border-radius: var(--w-border-radius-lg);
+    overflow: hidden;
+    position: relative;
+    background-color: var(--w-background-color-dark);
+    @include shadow(sm);
+    cursor: pointer;
+    @include liquid-motion(all, var(--w-motion-duration-fast));
+
+    &:hover {
+      transform: scale(1.01);
+      .upload-cover-modal__overlay {
+        opacity: 1;
+      }
+    }
+  }
+
+  &__preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__overlay {
+    @include flex(column, center, center);
+    position: absolute;
+    inset: 0;
+    background-color: rgba(var(--w-background-color-rgb), 0.5);
+    color: var(--w-white);
+    font-size: var(--w-font-size-lg);
+    opacity: 0;
+    transition: opacity var(--w-motion-duration-fast) ease;
+    gap: var(--w-spacing-sm);
+
+    &-icon {
+      font-size: var(--w-font-size-xxl);
+    }
+  }
+
+  &__input {
+    display: none;
+  }
+
+  &__actions {
+    @include flex(row, center, center);
+    gap: var(--w-spacing-md);
+    margin-top: var(--w-spacing-md);
+
+    @include breakpoint(mobile) {
+      flex-direction: column;
+      gap: var(--w-spacing-sm);
+    }
+  }
+
+  &__btn {
+    @include button-style(var(--w-primary-color), var(--w-white));
+    @include liquid-glass-base($opacity: var(--w-glass-opacity-light), $blur: var(--w-blur-xs));
+    @include liquid-glass-border(0.1);
+    @include liquid-motion(all, var(--w-motion-duration-fast));
+    padding: var(--w-spacing-sm) var(--w-spacing-lg);
+    font-size: var(--w-font-size-md);
+    border-radius: var(--w-border-radius-md);
+    @include flex(row, center, center);
+    gap: var(--w-spacing-sm);
+    flex-grow: 1;
+
+    &--primary {
+      background-color: var(--w-primary-color);
+      color: var(--w-white);
+      border-color: var(--w-primary-color);
+    }
+
+    &--secondary {
+      background-color: var(--w-background-color-dark);
+      color: var(--w-text-color);
+      border-color: var(--w-border-color);
+    }
+
+    &--danger {
+      background-color: var(--w-danger-color);
+      color: var(--w-white);
+      border-color: var(--w-danger-color);
+    }
+
+    .icon--spin {
+      animation: spin 1s linear infinite;
+    }
+  }
+}

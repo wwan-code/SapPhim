@@ -1,0 +1,72 @@
+@use '../mixins' as *;
+
+.avatar-menu {
+  @include floating-element-container;
+  min-width: 200px;
+  padding: var(--w-spacing-sm);
+  box-shadow: var(--w-glass-shadow-ambient), var(--w-glass-shadow-specular);
+  border-radius: var(--w-border-radius-lg);
+
+  &[data-open="true"] {
+    @include motion-dropdown('open-down');
+  }
+
+  &[data-open="false"] {
+    @include dropdown-close-compress('down');
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    @include flex(column, flex-start, stretch);
+    gap: var(--w-spacing-xs);
+  }
+
+  &__item {
+    @include floating-element-content;
+    // Stagger animation for items
+    &:nth-child(1) { animation-delay: 0ms; }
+    &:nth-child(2) { animation-delay: 50ms; }
+    &:nth-child(3) { animation-delay: 100ms; }
+  }
+
+  &__btn {
+    @include button-style(transparent, var(--w-text-color));
+    @include liquid-motion(all, var(--w-motion-duration-fast));
+    width: 100%;
+    text-align: left;
+    padding: var(--w-spacing-sm) var(--w-spacing-md);
+    border-radius: var(--w-border-radius-md);
+    font-size: var(--w-font-size-sm);
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-sm);
+    border: none;
+
+    &:hover {
+      background-color: rgba(var(--w-primary-color-rgb), 0.1);
+      color: var(--w-primary-color);
+      transform: translateX(2px);
+    }
+
+    &--danger {
+      color: var(--w-danger-color);
+
+      &:hover {
+        background-color: rgba(var(--w-danger-color-rgb), 0.1);
+        color: var(--w-danger-color);
+      }
+    }
+
+    .icon--spin {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  &__input {
+    display: none;
+  }
+}
+
+// Include floating element animations globally or in a base file
+@include floating-element-animations;

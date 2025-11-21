@@ -1,0 +1,1675 @@
+﻿// _mixins.scss
+
+/**
+ * Tên: @mixin breakpoint
+ * Mục đích: Tạo media query cho các điểm dừng responsive khác nhau (xs, sm, md, lg, xl, xxl, tv, mobile, tablet, desktop).
+ * Tham số: $point (string, bắt buộc) – Tên breakpoint (xs|sm|md|lg|xl|xxl|tv|mobile|tablet|desktop|tablet-and-below|desktop-and-above)
+ * Hành vi/Hiệu ứng: Phát hành media query CSS phù hợp theo giá trị $point được truyền.
+ * Khi dùng: Bao bọc CSS bên trong để áp dụng quy tắc chỉ ở breakpoint cụ thể.
+ * Truy cập/Khả dụng: —
+ */
+@mixin breakpoint($point) {
+  @if $point ==xs {
+    @media (max-width: 575.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==sm {
+    @media (min-width: 576px) and (max-width: 767.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==md {
+    @media (min-width: 768px) and (max-width: 991.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==lg {
+    @media (min-width: 992px) and (max-width: 1199.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==xl {
+    @media (min-width: 1200px) and (max-width: 1399.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==xxl {
+    @media (min-width: 1400px) {
+      @content;
+    }
+  }
+
+  @else if $point ==tv {
+    @media (min-width: 1920px) {
+      @content;
+    }
+  }
+
+  @else if $point ==mobile {
+    @media (max-width: 767.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==tablet {
+    @media (min-width: 768px) and (max-width: 991.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==desktop {
+    @media (min-width: 992px) {
+      @content;
+    }
+  }
+
+  @else if $point ==tablet-and-below {
+    @media (max-width: 991.98px) {
+      @content;
+    }
+  }
+
+  @else if $point ==desktop-and-above {
+    @media (min-width: 992px) {
+      @content;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin flex
+ * Mục đích: Thiết lập flexbox nhanh với hướng, căn chỉnh chính và căn chỉnh phụ.
+ * Tham số: $direction (string, mặc định: row) – Hướng flex; $justify (string, mặc định: flex-start) – Căn chỉnh chính; $align (string, mặc định: stretch) – Căn chỉnh phụ
+ * Hành vi/Hiệu ứng: Kích hoạt display: flex với các thuộc tính flex-direction, justify-content, align-items.
+ * Khi dùng: Áp dụng cho layout flexbox nhanh chóng mà không cần viết lặp lại các thuộc tính.
+ * Truy cập/Khả dụng: —
+ */
+@mixin flex($direction: row, $justify: flex-start, $align: stretch) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+}
+
+/**
+ * Tên: @mixin button-style
+ * Mục đích: Định dạng nút bấm với nền, chữ, padding, và hiệu ứng tương tác (hover, active, disabled).
+ * Tham số: $bg-color (color, bắt buộc) – Màu nền; $text-color (color, mặc định: var(--w-text-color)) – Màu chữ
+ * Hành vi/Hiệu ứng: Áp dụng cursor: pointer, transition, và brightness filter trên hover/active; giảm opacity khi disabled.
+ * Khi dùng: Tạo kiểu cơ bản cho button, liên kết hoặc phần tử tương tác tương tự.
+ * Truy cập/Khả dụng: —
+ */
+@mixin button-style($bg-color, $text-color: var(--w-text-color)) {
+  background-color: $bg-color;
+  color: $text-color;
+  padding: var(--w-spacing-sm) var(--w-spacing-md);
+  border-radius: var(--w-border-radius);
+  cursor: pointer;
+  transition: var(--w-transition-ease);
+  border: 1px solid $bg-color;
+
+  &:hover {
+    filter: brightness(0.9);
+  }
+
+  &:active {
+    filter: brightness(0.8);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/**
+ * Tên: @mixin text-truncate
+ * Mục đích: Rút gọn văn bản bằng ellipsis (…) khi vượt quá chiều rộng, hỗ trợ một dòng hoặc nhiều dòng.
+ * Tham số: $lines (number, mặc định: 1) – Số dòng tối đa trước khi cắt (1 hoặc nhiều hơn)
+ * Hành vi/Hiệu ứng: Sử dụng -webkit-line-clamp, -webkit-box-orient: vertical và text-overflow: ellipsis.
+ * Khi dùng: Hiển thị tiêu đề, mô tả hoặc nội dung dài mà cần giới hạn chiều cao.
+ * Truy cập/Khả dụng: —
+ */
+@mixin text-truncate($lines: 1) {
+  @if $lines ==1 {
+    overflow: hidden;
+    -o-text-overflow: ellipsis;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  @else {
+    overflow: hidden;
+    -o-text-overflow: ellipsis;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+  }
+}
+
+/**
+ * Tên: @mixin shadow
+ * Mục đích: Áp dụng box-shadow theo mức độ (sm, md, lg, none) dựa trên CSS variable được định nghĩa.
+ * Tham số: $level (string, mặc định: md) – Mức độ bóng (sm|md|lg|none)
+ * Hành vi/Hiệu ứng: Gán box-shadow từ các CSS variable --w-box-shadow-{level}.
+ * Khi dùng: Thêm chiều sâu/độ cao cho card, modal, dropdown hoặc thành phần nổi.
+ * Truy cập/Khả dụng: Phụ thuộc --w-box-shadow-sm, --w-box-shadow-md, --w-box-shadow-lg, --w-box-shadow
+ */
+@mixin shadow($level: md) {
+  @if $level ==sm {
+    box-shadow: var(--w-box-shadow-sm);
+  }
+
+  @else if $level ==md {
+    box-shadow: var(--w-box-shadow-md);
+  }
+
+  @else if $level ==lg {
+    box-shadow: var(--w-box-shadow-lg);
+  }
+
+  @else if $level ==none {
+    box-shadow: var(--w-box-shadow);
+  }
+}
+
+/**
+ * Tên: @mixin placeholder
+ * Mục đích: Định dạng placeholder text cho input/textarea trên tất cả trình duyệt (webkit, moz, ms).
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Cung cấp hook @content cho các CSS rule được áp dụng trên ::-webkit-input-placeholder, :-moz-placeholder, ::-moz-placeholder, :-ms-input-placeholder.
+ * Khi dùng: Tùy chỉnh màu, font, opacity của placeholder text giữa các trình duyệt.
+ * Truy cập/Khả dụng: —
+ */
+@mixin placeholder {
+  &::-webkit-input-placeholder {
+    @content;
+  }
+
+  &:-moz-placeholder {
+    @content;
+  }
+
+  &::-moz-placeholder {
+    @content;
+  }
+
+  &:-ms-input-placeholder {
+    @content;
+  }
+}
+
+/**
+ * Tên: @mixin card-style
+ * Mục đích: Tạo kiểu card cơ bản với nền, padding, border-radius và bóng đổ.
+ * Tham số: $padding (length, mặc định: var(--w-spacing-md)) – Padding nội; $border-radius (length, mặc định: var(--w-border-radius-lg)) – Độ cong góc; $shadow (string, mặc định: md) – Mức bóng
+ * Hành vi/Hiệu ứng: Gọi @mixin shadow() để áp dụng bóng đổ.
+ * Khi dùng: Tạo nhanh card, panel hoặc hộp chứa với định dạng tiêu chuẩn.
+ * Truy cập/Khả dụng: Phụ thuộc @mixin shadow, --w-background-color, --w-border-radius-lg, --w-spacing-md
+ */
+@mixin card-style($padding: var(--w-spacing-md), $border-radius: var(--w-border-radius-lg), $shadow: md) {
+  background-color: var(--w-background-color);
+  padding: $padding;
+  border-radius: $border-radius;
+}
+
+/**
+ * Tên: @mixin transition-ease
+ * Mục đích: Tạo transition mượt mà với cubic-bezier ease-in-out cho thuộc tính CSS.
+ * Tham số: $duration (time, mặc định: 0.3s) – Thời lượng transition; $property (string, mặc định: all) – Thuộc tính được transition
+ * Hành vi/Hiệu ứng: Áp dụng transition với easing curve ease-in-out.
+ * Khi dùng: Tạo hiệu ứng chuyển động mượt cho hover, active hoặc state change.
+ * Truy cập/Khả dụng: —
+ */
+@mixin transition-ease($duration: 0.3s, $property: all) {
+  transition: $property $duration ease-in-out;
+}
+
+/**
+ * Tên: @mixin shimmer-animation
+ * Mục đích: Tạo hiệu ứng ánh sáng lướt (shimmer) cho skeleton loading screens.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Kích hoạt animation skeleton-shimmer vô hạn (1.5s), gradient chạy từ trái sang phải.
+ * Khi dùng: Hiển thị trạng thái loading trên skeleton placeholder trước khi nội dung thật tải xong.
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes skeleton-shimmer, CSS variable --w-background-color-light, --w-border-color-dark
+ */
+@mixin shimmer-animation {
+  background-image: linear-gradient(to right, var(--w-background-color-dark) 0%, var(--w-background-color-dark) 25%, var(--w-background-color) 50%, var(--w-background-color-light) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+}
+
+/**
+ * Tên: @keyframes pulse-bg
+ * Mục đích: Tạo hiệu ứng nhịp sáng (pulse) cho background, opacity dao động từ 100% đến 50%.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: opacity từ 1 → 0.5 → 1 theo chu kỳ.
+ * Khi dùng: Sử dụng trong animation loading, skeleton hoặc thành phần chờ xử lý.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes pulse-bg {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse-scale {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.3;
+  }
+}
+
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/**
+ * Tên: @keyframes skeleton-shimmer
+ * Mục đích: Tạo ánh sáng lướt ngang trên skeleton placeholder từ trái sang phải.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Dịch background-position theo trục X, tạo cảm giác gradient chạy.
+ * Khi dùng: Kết hợp với @mixin shimmer-animation để hiển thị loading state.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.90);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(var(--w-primary-color-rgb), 0.3));
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 20px rgba(var(--w-primary-color-rgb), 0.5));
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/**
+ * Tên: @mixin focus-visible
+ * Mục đích: Xử lý trạng thái focus theo tiêu chuẩn WCAG, hiển thị outline chỉ khi keyboard focus (không mouse focus).
+ * Tham số: —
+ * Hành vi/Hiệu ứng: &:focus-visible hiển thị outline 2px, &:focus:not(:focus-visible) ẩn outline.
+ * Khi dùng: Cải thiện accessibility cho button, link, input mà không ảnh hưởng đến trải nghiệm click chuột.
+ * Truy cập/Khả dụng: Phụ thuộc --w-primary-color
+ */
+@mixin focus-visible {
+  &:focus-visible {
+    outline: 2px solid var(--w-primary-color);
+    outline-offset: 2px;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/**
+ * Tên: @mixin motion
+ * Mục đích: Quản lý animation với respect tới prefers-reduced-motion, hỗ trợ delay, duration, easing, fill-mode.
+ * Tham số: $name (animation-name, bắt buộc) – Tên animation; $duration (time, mặc định: var(--w-motion-duration-medium)) – Thời lượng; $easing (easing-function, mặc định: var(--w-motion-easing-elegant)) – Easing; $fill-mode (fill-mode, mặc định: forwards) – Fill-mode; $delay (time, mặc định: 0s) – Độ trễ
+ * Hành vi/Hiệu ứng: Áp dụng animation; animation: none khi prefers-reduced-motion.
+ * Khi dùng: Trigger animation phức tạp với accessibility tốt.
+ * Truy cập/Khả dụng: Phụ thuộc --w-motion-duration-medium, --w-motion-easing-elegant
+ */
+@mixin motion($name, $duration: var(--w-motion-duration-medium), $easing: var(--w-motion-easing-elegant), $fill-mode: forwards, $delay: 0s) {
+  animation: $name $duration $easing $delay $fill-mode;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/**
+ * Tên: @mixin transition
+ * Mục đích: Rút gọn transition với hỗ trợ accessibility (prefers-reduced-motion).
+ * Tham số: $property (string, mặc định: all) – Thuộc tính; $duration (time, mặc định: var(--w-motion-duration-medium)) – Thời lượng; $easing (easing-function, mặc định: var(--w-motion-easing-elegant)) – Easing
+ * Hành vi/Hiệu ứng: Áp dụng transition; transition: none khi prefers-reduced-motion.
+ * Khi dùng: Hover effect, state change transition mà vẫn tôn trọng user preference.
+ * Truy cập/Khả dụng: Phụ thuộc --w-motion-duration-medium, --w-motion-easing-elegant
+ */
+@mixin transition($property: all, $duration: var(--w-motion-duration-medium), $easing: var(--w-motion-easing-elegant)) {
+  transition: $property $duration $easing;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/**
+ * Tên: @mixin motion-dropdown
+ * Mục đích: Animation dropdown với 4 biến thể vị trí (open-down, open-up, close-down, close-up), mỗi variant dùng animation tương ứng.
+ * Tham số: $variant (string, bắt buộc) – Biến thể (open-down|open-up|close-down|close-up)
+ * Hành vi/Hiệu ứng: Gọi animation tương ứng; animation: none khi prefers-reduced-motion.
+ * Khi dùng: Dropdown, select menu, hoặc floating panel có animation mở/đóng hướng lên/xuống.
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes dropdown-open-down, dropdown-open-up, dropdown-close-down, dropdown-close-up, --w-motion-duration-medium, --w-motion-duration-fast, --w-motion-easing-spring, --w-motion-easing-snappy
+ */
+@mixin motion-dropdown($variant) {
+  @if $variant =='open-down' {
+    animation: dropdown-open-down var(--w-motion-duration-medium) var(--w-motion-easing-spring) forwards;
+  }
+
+  @else if $variant =='open-up' {
+    animation: dropdown-open-up var(--w-motion-duration-medium) var(--w-motion-easing-spring) forwards;
+  }
+
+  @else if $variant =='close-down' {
+    animation: dropdown-close-down var(--w-motion-duration-fast) var(--w-motion-easing-snappy) forwards;
+  }
+
+  @else if $variant =='close-up' {
+    animation: dropdown-close-up var(--w-motion-duration-fast) var(--w-motion-easing-snappy) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/**
+ * Tên: @keyframes dropdown-open-down
+ * Mục đích: Animation mở dropdown từ trên xuống với hiệu ứng bounce nhẹ ở giữa.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: 0% opacity 0 translateY(-6px) scale(0.96) → 60% bounce xuống → 100% vị trí cuối cùng.
+ * Khi dùng: Kết hợp @mixin motion-dropdown('open-down') cho dropdown, menu mở từ trên.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes dropdown-open-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/**
+ * Tên: @keyframes dropdown-open-up
+ * Mục đích: Animation mở dropdown từ dưới lên với hiệu ứng bounce nhẹ ở giữa.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: 0% opacity 0 translateY(6px) scale(0.96) → 60% bounce lên → 100% vị trí cuối cùng.
+ * Khi dùng: Kết hợp @mixin motion-dropdown('open-up') cho dropdown mở từ dưới.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes dropdown-open-up {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/**
+ * Tên: @keyframes dropdown-close-down
+ * Mục đích: Animation đóng dropdown trượt xuống, co lại và mờ dần.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: 0% full opacity, scale 1 → 60% co trục Y → 100% opacity 0 translateY(-10px) scale(0.9).
+ * Khi dùng: Kết hợp @mixin motion-dropdown('close-down') khi dropdown đóng từ trên.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes dropdown-close-down {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  60% {
+    opacity: 0.6;
+    transform: translateY(-3px) scaleY(0.94);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+  }
+}
+
+/**
+ * Tên: @keyframes dropdown-close-up
+ * Mục đích: Animation đóng dropdown trượt lên, co lại và mờ dần.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: 0% full opacity, scale 1 → 60% co trục Y → 100% opacity 0 translateY(10px) scale(0.9).
+ * Khi dùng: Kết hợp @mixin motion-dropdown('close-up') khi dropdown đóng từ dưới.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes dropdown-close-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  60% {
+    opacity: 0.6;
+    transform: translateY(3px) scaleY(0.94);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+}
+
+/**
+ * Tên: @mixin dropdown-close-compress
+ * Mục đích: Đóng dropdown bằng animation nén/co nhẹ trước khi biến mất, tôn trọng prefers-reduced-motion.
+ * Tham số: $direction (string, mặc định: 'down') – Hướng (down|up), chọn animation tương ứng
+ * Hành vi/Hiệu ứng: Gọi dropdown-close-down hoặc dropdown-close-up; nếu reduce motion thì fade-out đơn giản.
+ * Khi dùng: Khi user tương tác để đóng dropdown (escape key, click outside).
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes dropdown-close-down, dropdown-close-up, --w-motion-duration-fast, --w-motion-easing-snappy
+ */
+@mixin dropdown-close-compress($direction: 'down') {
+  @if $direction =='down' {
+    animation: dropdown-close-down var(--w-motion-duration-fast) var(--w-motion-easing-snappy) forwards;
+  }
+
+  @else {
+    animation: dropdown-close-up var(--w-motion-duration-fast) var(--w-motion-easing-snappy) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+    transition: opacity var(--w-motion-duration-fast) ease-out;
+  }
+}
+
+/**
+ * Tên: @mixin dropdown-open-layered
+ * Mục đích: Mở dropdown với vỏ ngoài chạy trước, nội dung fade-in trễ nhịp để tạo cảm giác nhiều lớp.
+ * Tham số: $direction (string, mặc định: 'down') – Hướng (down|up); $content-delay (time, mặc định: 40ms) – Độ trễ nội dung
+ * Hành vi/Hiệu ứng: Vỏ dropdown animate ngay, children có animation content-fade-in với delay. Khi reduce motion: animate none, opacity 1.
+ * Khi dùng: Dropdown phức tạp với nội dung (icon + text, nested item) cần animation staggered.
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes dropdown-open-down, dropdown-open-up, content-fade-in, --w-motion-duration-medium, --w-motion-duration-fast, --w-motion-easing-elegant
+ */
+@mixin dropdown-open-layered($direction: 'down', $content-delay: 40ms) {
+  @if $direction =='down' {
+    animation: dropdown-open-down var(--w-motion-duration-medium) var(--w-motion-easing-elegant) forwards;
+  }
+
+  @else {
+    animation: dropdown-open-up var(--w-motion-duration-medium) var(--w-motion-easing-elegant) forwards;
+  }
+
+  // Lớp nội dung trễ nhẹ tạo cảm giác nhiều tầng
+  >* {
+    animation: content-fade-in calc(var(--w-motion-duration-medium) - 100ms) ease-out $content-delay forwards;
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+
+    >* {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+/**
+ * Tên: @keyframes content-fade-in
+ * Mục đích: Fade-in nội dung từ dưới (translateY 4px) với opacity.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: 0% opacity 0 translateY(4px) → 100% opacity 1 translateY(0).
+ * Khi dùng: Kết hợp @mixin dropdown-open-layered cho children fade-in.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/**
+ * Tên: @mixin search-input-glass
+ * Mục đích: Định dạng search input với liquid glass effect: backdrop-filter blur, glow border, placeholder style, transition mượt.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Gọi liquid-glass-base, liquid-glass-border; thêm padding, border-radius, placeholder style. Hover: nền tăng opacity. Focus: tint + glow glow + shadow.
+ * Khi dùng: Search bar, filter input cần hiệu ứng kính hiện đại.
+ * Truy cập/Khả dụng: Phụ thuộc @mixin liquid-glass-base, liquid-glass-border, liquid-glass-tint, transition, --w-blur-sm, --w-glass-opacity-medium, --w-spacing-sm, --w-spacing-md, --w-border-radius-lg, --w-text-color, --w-text-color-light, --w-font-size-md, --w-glass-shadow-ambient, --w-primary-color-rgb, --w-background-color-rgb, --w-motion-duration-medium, --w-motion-easing-elegant
+ */
+@mixin search-input-glass {
+  @include liquid-glass-base($blur: var(--w-blur-sm), $opacity: var(--w-glass-opacity-medium));
+  @include liquid-glass-border(0.12);
+  border-radius: var(--w-border-radius-lg);
+  color: var(--w-text-color);
+  font-size: var(--w-font-size-md);
+  outline: none;
+  width: 100%;
+
+  @include transition(all, var(--w-motion-duration-medium), var(--w-motion-easing-elegant));
+
+  @include placeholder {
+    color: var(--w-text-color-light);
+    opacity: 0.6;
+    text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  &:focus {
+    box-shadow:
+      var(--w-glass-shadow-ambient),
+      0 0 4px 2px rgba(var(--w-primary-color-rgb), 0.15);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:focus {
+      transform: none;
+    }
+  }
+
+  // Phương án thay thế khi giảm độ trong suốt
+  @supports not (backdrop-filter: blur(var(--w-blur-sm))) {
+    background-color: rgba(var(--w-background-color-rgb), 0.95);
+  }
+}
+
+/**
+ * Tên: @mixin search-dropdown-shell
+ * Mục đích: Container cho kết quả search với liquid glass complete effect: blur mạnh, viền, bóng đa lớp.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Gọi liquid-glass-complete với depth 'deep', thêm border-radius, shadow specular. Fallback nền lỏng khi không hỗ trợ backdrop.
+ * Khi dùng: Dropdown hiển thị search result, autocomplete list.
+ * Truy cập/Khả dụng: Phụ thuộc @mixin liquid-glass-complete, --w-blur-lg, --w-glass-opacity-heavy, --w-glass-tint-medium, --w-border-radius-xl, --w-glass-shadow-ambient, --w-glass-shadow-specular, --w-glass-border-light, --w-background-color-rgb, --w-border-color
+ */
+@mixin search-dropdown-shell {
+  @include liquid-glass-complete($opacity: var(--w-glass-opacity-subtle),
+    $blur: var(--w-blur-sm),
+    $depth: 'medium',
+    $add-highlight: false,
+    $add-tint: false,
+  );
+
+  border-radius: var(--w-border-radius-xl);
+  overflow: hidden;
+  box-shadow:
+    var(--w-glass-shadow-ambient),
+    var(--w-glass-shadow-specular),
+    0 0 0 1px var(--w-glass-border-light);
+
+  // Phương án thay thế khi thiếu hỗ trợ backdrop-filter mạnh
+  @supports not (backdrop-filter: blur(var(--w-blur-lg))) {
+    background-color: rgba(var(--w-background-color-rgb), 0.98);
+    border: 1px solid var(--w-border-color);
+  }
+}
+
+/**
+ * Tên: @mixin search-item-hover
+ * Mục đích: Hover effect cho mỗi search result item: translateX, scale, gradient overlay fade-in.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Gọi liquid-motion; &:hover translateX(4px) scale(1.01), ::before gradient overlay fade-in; &:active translateX(2px) scale(0.99).
+ * Khi dùng: Mỗi item trong search dropdown result list.
+ * Truy cập/Khả dụng: Phụ thuộc @mixin liquid-motion, --w-border-radius-md, --w-primary-color-rgb, --w-motion-easing-spring
+ */
+@mixin search-item-hover {
+  @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+  cursor: pointer;
+  position: relative;
+  border-radius: var(--w-border-radius-md);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg,
+        rgba(var(--w-primary-color-rgb), 0.08),
+        transparent 60%);
+    opacity: 0;
+    @include liquid-motion(opacity, 0.2s);
+  }
+
+  &:hover {
+    transform: translateX(4px) scale(1.01);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateX(2px) scale(0.99);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+    &:hover,
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin liquid-glass-base
+ * Mục đích: Nền kính mờ cơ bản với backdrop-filter blur + saturate, hỗ trợ fallback và accessibility.
+ * Tham số: $opacity (number, mặc định: var(--w-glass-opacity-medium)) – Độ mờ nền; $blur (length, mặc định: var(--w-blur-sm)) – Độ blur; $saturation (percentage, mặc định: 180%) – Độ bão hòa
+ * Hành vi/Hiệu ứng: Áp dụng rgba background + backdrop-filter; @supports fallback khi không hỗ trợ; @media prefers-reduced-transparency thì disable blur.
+ * Khi dùng: Base layer cho liquid glass card, button, container.
+ * Truy cập/Khả dụng: Phụ thuộc --w-background-color-rgb
+ */
+@mixin liquid-glass-base($opacity: var(--w-glass-opacity-medium),
+  $blur: var(--w-blur-sm),
+  $saturation: 180%,
+  $background: var(--w-background-color-rgb),
+  $tint: var(--w-glass-tint-medium),
+) {
+  @if $tint !=null {
+    background: $tint;
+  }
+
+  @else {
+    background: rgba($background, $opacity);
+  }
+
+  backdrop-filter: blur($blur) saturate($saturation);
+  -webkit-backdrop-filter: blur($blur) saturate($saturation);
+
+  // Phương án dự phòng cho trình duyệt không hỗ trợ backdrop-filter
+  @supports not (backdrop-filter: blur()) {
+    @supports not (-webkit-backdrop-filter: blur()) {
+      background: rgba($background, calc($opacity + 0.15));
+    }
+  }
+
+  // Tôn trọng tùy chọn giảm độ trong suốt của người dùng
+  @media (prefers-reduced-transparency: reduce) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(var(--w-background-color-rgb), 0.95);
+  }
+}
+
+/**
+ * Tên: @mixin specular-highlight
+ * Mục đích: Gradient phản chiếu ánh sáng động trên bề mặt kính với layer ::before, fade-in trên hover.
+ * Tham số: $intensity (number, mặc định: 0.4) – Độ mạnh của highlight (0–1)
+ * Hành vi/Hiệu ứng: ::before linear-gradient 135deg white → transparent, opacity 0 → 1 trên hover, transition smooth.
+ * Khi dùng: Card kính, button kính, modal header cần hiệu ứng phản chiếu cao cấp.
+ * Truy cập/Khả dụng: Phụ thuộc --w-motion-duration-medium, --w-motion-easing-spring
+ */
+@mixin specular-highlight($intensity: 0.4) {
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, $intensity) 0%,
+        rgba(255, 255, 255, $intensity * 0.5) 20%,
+        rgba(255, 255, 255, 0) 50%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+    z-index: 1;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::before {
+      transition: none;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin liquid-glass-border
+ * Mục đích: Viền kính sáng mềm với white highlight inner shadow, áp dụng cho glass component.
+ * Tham số: $opacity (number, mặc định: 0.18) – Độ trong suốt của viền trắng
+ * Hành vi/Hiệu ứng: Viền 1px white rgba, box-shadow inner + ambient shadow.
+ * Khi dùng: Glass card, glass button, kết hợp với liquid-glass-base.
+ * Truy cập/Khả dụng: Phụ thuộc --w-glass-inner-shadow, --w-glass-shadow-ambient
+ */
+@mixin liquid-glass-border($opacity: 0.18) {
+  border: 1px solid rgba(255, 255, 255, $opacity);
+  box-shadow:
+    var(--w-glass-shadow-ambient);
+}
+
+/**
+ * Tên: @mixin liquid-glass-shadow
+ * Mục đích: Đổ bóng đa lớp cho liquid glass theo chiều sâu (subtle, medium, elevated).
+ * Tham số: $depth (string, mặc định: 'medium') – Độ sâu (subtle|medium|elevated)
+ * Hành vi/Hiệu ứng: Kết hợp outer shadow (ambient + specular) + inner shadow, cách biệt tùy $depth.
+ * Khi dùng: Glass card, glass panel, để thêm depth và elevation.
+ * Truy cập/Khả dụng: Phụ thuộc --w-glass-inner-shadow, --w-glass-shadow-specular
+ */
+@mixin liquid-glass-shadow($depth: 'medium') {
+  @if $depth =='subtle' {
+    box-shadow:
+      0 4px 16px -1px rgba(0, 0, 0, 0.06),
+      0 2px 8px -1px rgba(0, 0, 0, 0.04),
+      var(--w-glass-inner-shadow), var(--w-glass-shadow-specular);
+  }
+
+  @else if $depth =='medium' {
+    box-shadow:
+      0 8px 26px -3px rgba(0, 0, 0, 0.1),
+      0 4px 12px -2px rgba(0, 0, 0, 0.08),
+      var(--w-glass-inner-shadow), var(--w-glass-shadow-specular);
+  }
+
+  @else if $depth =='elevated' {
+    box-shadow:
+      0 16px 48px -4px rgba(0, 0, 0, 0.15),
+      0 8px 24px -4px rgba(0, 0, 0, 0.1),
+      var(--w-glass-inner-shadow), var(--w-glass-shadow-specular);
+  }
+}
+
+/**
+ * Tên: @mixin liquid-motion
+ * Mục đích: Transition với easing spring (0.4, 0, 0.2, 1), will-change optimization, tôn trọng prefers-reduced-motion.
+ * Tham số: $property (string, mặc định: all) – Thuộc tính; $duration (time, mặc định: var(--w-motion-duration-medium)) – Thời lượng; $easing (easing, mặc định: var(--w-motion-easing-spring)) – Easing curve
+ * Hành vi/Hiệu ứng: Transition + will-change; transition: none khi prefers-reduced-motion.
+ * Khi dùng: Smooth transform, opacity change trên interactive element.
+ * Truy cập/Khả dụng: Phụ thuộc --w-motion-duration-medium, --w-motion-easing-spring
+ */
+@mixin liquid-motion($property: all,
+  $duration: var(--w-motion-duration-medium),
+  $easing: var(--w-motion-easing-spring)) {
+  transition: $property $duration $easing;
+
+  // Nếu chỉ định rõ thuộc tính, thêm will-change để tối ưu hiệu suất
+  // Nếu all thì không thêm will-change để tránh overuse
+  @if $property !=all {
+    will-change: $property;
+  }
+
+  @else {
+    will-change: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    will-change: auto;
+  }
+}
+
+/**
+ * Tên: @mixin liquid-glass-ripple
+ * Mục đích: Hiệu ứng gợn sóng (ripple) khi tap/click, radius gradient mở rộng từ center.
+ * Tham số: $color (color, mặc định: rgba(255, 255, 255, 0.3)) – Màu gợn sóng
+ * Hành vi/Hiệu ứng: ::after radial-gradient, width/height 0 → 300px, opacity 0.6 → 0 trên active.
+ * Khi dùng: Button kính, interactive card, surface cần feedback ripple.
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes ripple-expand, --w-motion-easing-spring
+ */
+@mixin liquid-glass-ripple($color: rgba(255, 255, 255, 0.3)) {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, $color 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:active::after {
+    animation: ripple-expand 0.6s var(--w-motion-easing-spring);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:active::after {
+      animation: none;
+    }
+  }
+}
+
+/**
+ * Tên: @keyframes ripple-expand
+ * Mục đích: Animation gợn sóng mở rộng từ center với opacity fade-out.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: 0% w:0 h:0 opacity:0.6 → 100% w:300px h:300px opacity:0.
+ * Khi dùng: Kết hợp @mixin liquid-glass-ripple trên active.
+ * Truy cập/Khả dụng: —
+ */
+@keyframes ripple-expand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.6;
+  }
+
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+  }
+}
+
+/**
+ * Tên: @mixin liquid-glass-tint
+ * Mục đích: Layer tint màu động với ::after pseudo-element, fade-in trên hover.
+ * Tham số: $tint-color (color, mặc định: var(--w-glass-tint-light)) – Màu tint
+ * Hành vi/Hiệu ứng: ::after layer, opacity 0 → 1 trên hover, z-index 0 (behind content).
+ * Khi dùng: Glass component cần tint color overlay khi hover.
+ * Truy cập/Khả dụng: Phụ thuộc --w-motion-duration-medium, --w-motion-easing-spring, --w-glass-tint-light
+ */
+@mixin liquid-glass-tint($tint-color: var(--w-glass-tint-light)) {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: $tint-color;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+    z-index: 0;
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      transition: none;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin liquid-glass-complete
+ * Mục đích: Tổng hợp đầy đủ liquid glass effect: base + border + shadow + optional highlight/tint.
+ * Tham số: $opacity (number, mặc định: var(--w-glass-opacity-medium)) – Opacity; $blur (length, mặc định: var(--w-blur-xs)) – Blur; $depth (string, mặc định: 'medium') – Shadow depth; $add-highlight (boolean, mặc định: true) – Thêm specular-highlight; $add-tint (boolean, mặc định: true) – Thêm tint layer; $set-position (boolean, mặc định: true) – Set position: relative
+ */
+@mixin liquid-glass-complete($opacity: var(--w-glass-opacity-medium),
+  $blur: var(--w-blur-xs),
+  $depth: 'medium',
+  $add-highlight: false,
+  $add-tint: true,
+  $set-position: true) {
+  @include liquid-glass-base($opacity, $blur, $tint: null);
+  @include liquid-glass-shadow($depth);
+
+  @if $set-position {
+    position: relative;
+  }
+
+  isolation: isolate;
+
+  @if $add-highlight {
+    @include specular-highlight();
+  }
+
+  @if $add-tint {
+    @include liquid-glass-tint();
+  }
+}
+
+/**
+ * Tên: @mixin floating-element-container
+ * Mục đích: Container cho floating element (dropdown, tooltip, popup) với glass layer, z-index, overflow control.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Gọi liquid-glass-complete, thêm &[data-open="false"] pointer-events: none, ::after blur layer (opacity animated).
+ * Khi dùng: Dropdown wrapper, modal backdrop, tooltip container.
+ */
+@mixin floating-element-container {
+  @include liquid-glass-complete($opacity: var(--w-glass-opacity-subtle),
+    $blur: var(--w-blur-sm),
+    $depth: 'medium',
+    $add-highlight: false,
+    $add-tint: false,
+    $set-position: true);
+
+  border-radius: var(--w-border-radius-xl);
+  z-index: var(--w-zindex-dropdown);
+  overflow: hidden;
+  will-change: transform, opacity, filter;
+
+  &[data-open="false"] {
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(var(--w-background-color-rgb), 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0;
+    will-change: opacity;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/**
+ * Tên: @mixin floating-element-content
+ * Mục đích: Content fade-in animation cho nội dung trong floating element, stagger effect với delay.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Animation contentFadeIn 60ms delay; khi [data-open="false"], animation contentFadeOut. Accessibility: simpleFadeIn/simpleFadeOut khi prefers-reduced-motion.
+ * Khi dùng: Nội dung trong dropdown, tooltip, popup cần fade-in.
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes contentFadeIn, contentFadeOut, simpleFadeIn, simpleFadeOut, --w-motion-duration-medium, --w-motion-duration-fast
+ */
+@mixin floating-element-content {
+  animation: contentFadeIn var(--w-motion-duration-medium) cubic-bezier(0.4, 0, 0.2, 1) 60ms forwards;
+  opacity: 0;
+
+  [data-open="false"] & {
+    animation: contentFadeOut calc(var(--w-motion-duration-fast) * 0.7) ease-out forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: simpleFadeIn 0.2s ease 60ms forwards !important;
+
+    [data-open="false"] & {
+      animation: simpleFadeOut 0.15s ease forwards !important;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin floating-element-animations
+ * Mục đích: Định nghĩa tất cả @keyframes cần cho floating element animation (unfold, compress, fade...).
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Khai báo @keyframes liquidUnfold, liquidCompressAndFold, contentFadeIn, contentFadeOut, simpleFadeIn, simpleFadeOut bên trong mixin.
+ * Khi dùng: Nhúng mixin này trong style để kích hoạt keyframes.
+ * Truy cập/Khả dụng: —
+ */
+@mixin floating-element-animations {
+  @keyframes liquidUnfold {
+    0% {
+      opacity: 0;
+      transform: scale(0.8, 0.7);
+      filter: blur(8px);
+    }
+
+    60% {
+      transform: scale(1.02, 1.05);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scale(1, 1);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes liquidUnfoldUp {
+    0% {
+      opacity: 0;
+      transform: scale(0.8, 0.7) translateY(10px);
+      filter: blur(8px);
+    }
+
+    60% {
+      transform: scale(1.02, 1.05) translateY(-2px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scale(1, 1) translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes liquidCompressAndFold {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    40% {
+      transform: scale(1, 0.95);
+      opacity: 1;
+    }
+
+    100% {
+      transform: scale(0.75, 0.6);
+      opacity: 0;
+      filter: blur(8px);
+    }
+  }
+
+  @keyframes liquidCompressAndFoldUp {
+    0% {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    40% {
+      transform: scale(1, 0.95) translateY(2px);
+      opacity: 1;
+    }
+
+    100% {
+      transform: scale(0.75, 0.6) translateY(10px);
+      opacity: 0;
+      filter: blur(8px);
+    }
+  }
+
+  @keyframes contentFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes contentFadeOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    to {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes simpleFadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes simpleFadeOut {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin tab-indicator-glide
+ * Mục đích: Spring overshoot transition cho tab indicator (pill, underline) di chuyển giữa tab.
+ * Tham số: $overshoot (number, mặc định: 1.56) – Overshoot intensity cubic-bezier (1.0–2.0); $duration (time, mặc định: 400ms) – Thời lượng
+ * Hành vi/Hiệu ứng: Transition transform, width, opacity với cubic-bezier overshoot; accessibility: rút gọn duration.
+ * Khi dùng: Pill indicator, underline indicator trong tab component.
+ * Truy cập/Khả dụng: —
+ */
+@mixin tab-indicator-glide($overshoot: 1.56,
+  $duration: 400ms) {
+  transition:
+    transform $duration cubic-bezier(0.34, $overshoot, 0.64, 1),
+    width $duration cubic-bezier(0.34, $overshoot, 0.64, 1),
+    opacity calc($duration * 0.625) ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition:
+      transform calc($duration * 0.625) ease,
+      width calc($duration * 0.625) ease,
+      opacity calc($duration * 0.375) ease;
+  }
+}
+
+/**
+ * Tên: @mixin tab-content-reveal
+ * Mục đích: Fade-in animation cho nội dung tab mới được reveal sau shell settle animation.
+ * Tham số: $delay (time, mặc định: 30ms) – Độ trễ sau shell animation; $duration (time, mặc định: 230ms) – Thời lượng fade
+ * Hành vi/Hiệu ứng: Animation contentReveal cubic-bezier với delay; accessibility: contentRevealSimple rút gọn.
+ * Khi dùng: Tab content fade-in sau tab switch.
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes contentReveal, contentRevealSimple
+ */
+@mixin tab-content-reveal($delay: 30ms,
+  $duration: 230ms) {
+  animation: contentReveal $duration cubic-bezier(0.4, 0, 0.2, 1) $delay forwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: contentRevealSimple calc($duration * 0.78) ease $delay forwards;
+  }
+}
+
+/**
+ * Tên: @mixin tab-content-fade-out
+ * Mục đích: Quick fade-out animation cho tab content khi tab switch hoặc đóng.
+ * Tham số: $duration (time, mặc định: 120ms) – Fade-out duration
+ * Hành vi/Hiệu ứng: Opacity: 0, transition opacity ease-out.
+ * Khi dùng: Tab content fade-out trước khi switch.
+ * Truy cập/Khả dụng: —
+ */
+@mixin tab-content-fade-out($duration: 120ms) {
+  opacity: 0;
+  transition: opacity $duration ease-out;
+}
+
+/**
+ * Tên: @mixin tab-glass-pill
+ * Mục đích: Kiểu hoàn chỉnh cho tab indicator dạng pill với liquid glass base, border, shadow và specular highlight.
+ */
+@mixin tab-glass-pill {
+  box-shadow:
+    var(--w-glass-inner-shadow),
+    0 4px 16px 0 rgba(var(--w-primary-color-rgb), 0.15),
+    0 2px 8px 0 rgba(var(--w-primary-color-rgb), 0.1);
+
+  background: linear-gradient(180deg,
+      rgba(var(--w-primary-color-rgb), 0.15),
+      rgba(var(--w-primary-color-rgb), 0.08)), rgba(var(--w-background-color-rgb), var(--w-glass-opacity-subtle));
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.3) 0%,
+        rgba(255, 255, 255, 0.15) 40%,
+        rgba(255, 255, 255, 0) 70%);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(var(--w-primary-color-rgb), 0.2);
+  }
+}
+
+/**
+ * Tên: @mixin tab-button-base
+ * Mục đích: Base styling cho tab button: transparent bg, no border, cursor pointer, liquid motion, focus-visible, hover/active transform.
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Gọi liquid-motion, focus-visible; &:hover translateY(-1px), &::before opacity fade; &:active scale(0.98). Accessibility: normal khi prefers-reduced-motion.
+ * Khi dùng: Mỗi tab button trong tab component.
+ * Truy cập/Khả dụng: Phụ thuộc @mixin liquid-motion, focus-visible, --w-motion-easing-spring, --w-background-color-rgb
+ */
+@mixin tab-button-base {
+  position: relative;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+
+  // Subtle hover background
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(var(--w-background-color-rgb), 0.05);
+    opacity: 0;
+    @include liquid-motion(opacity, 0.2s);
+  }
+
+  &:hover:not(&--active) {
+    transform: translateY(-1px);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  @include focus-visible();
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover:not(&--active) {
+      transform: none;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin sidebar-shell-animate
+ * Mục đích: Shell animation cho sidebar open/close với compress-first choreography
+ * Tham số: $variant (string, mặc định: 'open') – Biến thể (open|close)
+ * Hành vi/Hiệu ứng: Gọi animation sidebarShellOpen hoặc sidebarShellClose; fallback khi prefers-reduced-motion
+ * Khi dùng: Sidebar shell container khi toggle open/close
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes sidebarShellOpen, sidebarShellClose
+ */
+@mixin sidebar-shell-animate($variant: 'open') {
+  @if $variant =='open' {
+    animation: sidebarShellOpen var(--w-motion-duration-medium) var(--w-motion-easing-spring);
+  }
+
+  @else if $variant =='close' {
+    animation: sidebarShellClose var(--w-motion-duration-fast) var(--w-motion-easing-snappy);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    @if $variant =='open' {
+      animation: sidebarShellOpenSimple var(--w-motion-duration-fast) ease;
+    }
+
+    @else {
+      animation: sidebarShellCloseSimple calc(var(--w-motion-duration-fast) * 0.8) ease;
+    }
+  }
+}
+
+/**
+ * Tên: @mixin sidebar-content-stagger
+ * Mục đích: Staggered fade-in animation cho sidebar nav items
+ * Tham số: $base-delay (time, mặc định: 40ms) – Base delay; $stagger-increment (time, mặc định: 20ms) – Increment per item
+ * Hành vi/Hiệu ứng: Animation sidebarItemFadeIn với delay tính theo --stagger-index; fallback reduced-motion
+ * Khi dùng: Sidebar nav items khi sidebar opens
+ * Truy cập/Khả dụng: Phụ thuộc @keyframes sidebarItemFadeIn, sidebarItemFadeInSimple; CSS variable --stagger-index
+ */
+@mixin sidebar-content-stagger($base-delay: 40ms, $stagger-increment: 20ms) {
+  animation: sidebarItemFadeIn calc(var(--w-motion-duration-medium) - 100ms) ease-out calc($base-delay + var(--stagger-index, 0) * $stagger-increment) forwards;
+  opacity: 0;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: sidebarItemFadeInSimple var(--w-motion-duration-fast) ease calc($base-delay * 0.5 + var(--stagger-index, 0) * ($stagger-increment * 0.5)) forwards;
+  }
+}
+
+/**
+ * Tên: @mixin sidebar-backdrop-blur
+ * Mục đích: Frosted glass backdrop cho sidebar với fallbacks
+ * Tham số: $opacity (number, mặc định: 0.3) – Base opacity; $blur (length, mặc định: var(--w-blur-sm)) – Blur amount
+ * Hành vi/Hiệu ứng: Liquid glass backdrop với animation, Firefox fallback, reduced-transparency support
+ * Khi dùng: Sidebar backdrop overlay
+ * Truy cập/Khả dụng: Phụ thuộc @mixin liquid-glass-base, liquid-motion
+ */
+@mixin sidebar-backdrop-blur($opacity: 0.3, $blur: var(--w-blur-sm)) {
+  @include liquid-glass-base($opacity, $blur, 140%);
+  @include liquid-motion(opacity, var(--w-motion-duration-medium));
+
+  cursor: pointer;
+
+  @supports not (backdrop-filter: blur()) {
+    background: rgba(var(--w-background-color-rgb), 0.85);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(var(--w-background-color-rgb), 0.9);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity var(--w-motion-duration-fast) ease;
+  }
+}
+
+/**
+ * Tên: @mixin sidebar-scroll-style
+ * Mục đích: Custom scrollbar styling cho sidebar nav (liquid glass theme)
+ * Tham số: —
+ * Hành vi/Hiệu ứng: Webkit scrollbar với primary color tint, hover state
+ * Khi dùng: Sidebar nav container với overflow-y: auto
+ * Truy cập/Khả dụng: —
+ */
+@mixin sidebar-scroll-style {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(var(--w-background-color-rgb), 0.05);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(var(--w-primary-color-rgb), 0.3);
+    border-radius: 3px;
+    transition: background var(--w-motion-duration-fast) ease;
+
+    &:hover {
+      background: rgba(var(--w-primary-color-rgb), 0.5);
+    }
+  }
+}
+
+// ====================================
+// 🎬 KEYFRAMES - SIDEBAR ANIMATIONS
+// ====================================
+
+/**
+ * Shell open - Compress first, then spring overshoot
+ */
+@keyframes sidebarShellOpen {
+  0% {
+    transform: translateX(-100%) scaleX(0.96);
+    filter: blur(4px);
+  }
+
+  60% {
+    transform: translateX(0) scaleX(1.02);
+    filter: blur(0);
+  }
+
+  100% {
+    transform: translateX(0) scaleX(1);
+    filter: blur(0);
+  }
+}
+
+/**
+ * Shell close - Compress and fold
+ */
+@keyframes sidebarShellClose {
+  0% {
+    transform: translateX(0) scaleX(1);
+    opacity: 1;
+  }
+
+  40% {
+    transform: translateX(-10%) scaleX(0.98);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateX(-100%) scaleX(0.9);
+    opacity: 0;
+  }
+}
+
+/**
+ * Shell open (Reduced Motion)
+ */
+@keyframes sidebarShellOpenSimple {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/**
+ * Shell close (Reduced Motion)
+ */
+@keyframes sidebarShellCloseSimple {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/**
+ * Item fade-in with slide
+ */
+@keyframes sidebarItemFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/**
+ * Item fade-in (Reduced Motion)
+ */
+@keyframes sidebarItemFadeInSimple {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+
+// 🌊 TAB SHELL WARP: Compress-first morphing
+@keyframes tabShellWarp {
+  0% {
+    transform: scaleY(1);
+    filter: blur(0) brightness(1);
+  }
+
+  40% {
+    transform: scaleY(0.98); // Compress vertically
+    filter: blur(0.5px) brightness(1.05); // Slight blur + brightness
+  }
+
+  100% {
+    transform: scaleY(1.01); // Slight overshoot
+    filter: blur(0) brightness(1);
+  }
+}
+
+// 🏁 TAB SHELL SETTLE: Spring damping back to rest
+@keyframes tabShellSettle {
+  0% {
+    transform: scaleY(1.01);
+    filter: blur(0.5px) brightness(1.02);
+  }
+
+  50% {
+    transform: scaleY(0.998); // Small undershoot
+    filter: blur(0) brightness(1);
+  }
+
+  100% {
+    transform: scaleY(1);
+    filter: blur(0) brightness(1);
+  }
+}

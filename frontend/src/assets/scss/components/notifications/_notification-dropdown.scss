@@ -1,0 +1,409 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+// Import the new animation keyframes
+@include floating-element-animations;
+
+.notification-dropdown {
+  @include floating-element-container;
+
+  min-width: 420px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+
+  &[data-open="true"] {
+    @include motion(liquidUnfold,
+      var(--w-motion-duration-slow),
+      var(--w-motion-easing-elegant));
+  }
+
+  &[data-open="false"] {
+    @include motion(liquidCompressAndFold,
+      var(--w-motion-duration-fast),
+      var(--w-motion-easing-snappy));
+  }
+
+  &__glass-reflection {
+    @include specular-highlight(0.5);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  &__content-wrapper {
+    @include floating-element-content;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  &--mobile {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh !important;
+    min-width: auto;
+    max-width: 100% !important;
+    border-radius: 0;
+    transition: transform 0.4s var(--w-motion-easing-elegant);
+    transform: translateY(100%);
+
+    &[data-open="true"] {
+      transform: translateY(0);
+      animation: none;
+    }
+
+    &[data-open="false"] {
+      transform: translateY(100%);
+      animation: none;
+    }
+  }
+
+  &__header {
+    @include flex(row, space-between, center);
+    padding: var(--w-spacing-lg);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: var(--w-spacing-md);
+      right: var(--w-spacing-md);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--w-text-color-rgb), 0.1) 50%, transparent);
+    }
+  }
+
+  &__title {
+    font-size: var(--w-font-size-lg);
+    font-weight: var(--w-font-weight-bold);
+    margin: 0;
+    color: var(--w-text-color);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  &__actions {
+    @include flex(row, flex-end, center);
+    gap: var(--w-spacing-xs);
+  }
+
+  &__action-btn {
+    @include flex(row, center, center);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--w-border-radius-circle);
+    background-color: transparent;
+    color: var(--w-text-color-light);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: rgba(var(--w-primary-color-rgb), 0.1);
+      opacity: 0;
+      @include liquid-motion(opacity, 0.2s);
+    }
+
+    &:hover {
+      color: var(--w-text-color);
+      transform: scale(1.05);
+
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    @include focus-visible();
+  }
+
+  // ============================================
+  // 🌊 LIQUID GLASS TABS SYSTEM
+  // ============================================
+  &__tabs {
+    @include flex(row, stretch, center);
+    padding: var(--w-spacing-sm) var(--w-spacing-md);
+    gap: var(--w-spacing-sm);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+
+    // 🎯 SHELL MORPHING: Warp effect during transition
+    &--warping {
+      animation: tabShellWarp 180ms var(--w-motion-easing-spring);
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+
+    // 🏁 SHELL SETTLING: Gentle spring back
+    &--settling {
+      animation: tabShellSettle 270ms var(--w-motion-easing-spring);
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: var(--w-spacing-md);
+      right: var(--w-spacing-md);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--w-text-color-rgb), 0.1) 50%, transparent);
+    }
+  }
+
+  // 💫 ANIMATED PILL INDICATOR - Glides with spring overshoot
+  &__tab-indicator-pill {
+    position: absolute;
+    top: var(--w-spacing-sm);
+    height: calc(100% - calc(var(--w-spacing-sm) * 2));
+    left: 0;
+    border-radius: var(--w-border-radius-lg);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    backface-visibility: hidden;
+    perspective: 1000px;
+    will-change: transform, width, opacity;
+    @include tab-glass-pill;
+    @include tab-indicator-glide(1.4, 350ms);
+
+  }
+
+  // 🔘 INDIVIDUAL TAB BUTTON
+  &__tab {
+    flex: 1;
+    padding: var(--w-spacing-sm) var(--w-spacing-md);
+    font-size: var(--w-font-size-sm);
+    font-weight: var(--w-font-weight-medium);
+    color: var(--w-text-color-light);
+    background-color: transparent;
+    border-radius: var(--w-border-radius-lg);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: rgba(var(--w-background-color-rgb), 0.05);
+      opacity: 0;
+      z-index: 0;
+      transform: translateZ(0);
+      @include liquid-motion(opacity, 0.2s);
+    }
+
+    &:hover:not(&--active) {
+      color: var(--w-primary-color);
+      transform: translateZ(0);
+
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    &--active {
+      color: var(--w-primary-color);
+      font-weight: var(--w-font-weight-bold);
+    }
+
+    @include focus-visible();
+  }
+
+  &__tab-label {
+    position: relative;
+    z-index: 1;
+  }
+
+  // ============================================
+  // CONTENT SECTION - Delayed Reveal
+  // ============================================
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--w-spacing-sm);
+    position: relative;
+    z-index: 2;
+    opacity: 1;
+    transition: opacity 180ms ease;
+    max-height: calc(80vh - 120px);
+
+    // 🌫️ FADING OUT: Content disappears quickly
+    &--fading {
+      opacity: 0;
+      transition: opacity 120ms ease-out;
+    }
+
+    // ✨ REVEALING: Content fades in with delay
+    &--revealing {
+      animation: contentFadeIn 230ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: simpleFadeIn 180ms ease forwards;
+      }
+    }
+
+    // Custom scrollbar for all browsers
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--w-primary-color-rgb), 0.3) rgba(var(--w-background-color-rgb), 0.05);
+
+    &::-webkit-scrollbar {
+      width: 8px;
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgba(var(--w-background-color-rgb), 0.05);
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(90deg,
+        rgba(var(--w-primary-color-rgb), 0.25) 0%,
+        rgba(var(--w-primary-color-rgb), 0.45) 100%
+      );
+      border-radius: 4px;
+      min-height: 24px;
+      @include liquid-motion(background, 0.2s);
+
+      &:hover {
+        background: linear-gradient(90deg,
+          rgba(var(--w-primary-color-rgb), 0.45) 0%,
+          rgba(var(--w-primary-color-rgb), 0.65) 100%
+        );
+      }
+    }
+  }
+
+  &__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    @include flex(column, stretch, stretch);
+    gap: var(--w-spacing-xs);
+  }
+
+  // ============================================
+  // STATES: Loading, Empty, Error
+  // ============================================
+  &__skeleton,
+  &__empty,
+  &__error {
+    padding: var(--w-spacing-xl);
+    text-align: center;
+  }
+
+  &__empty,
+  &__error {
+    @include flex(column, center, center);
+    gap: var(--w-spacing-md);
+    color: var(--w-text-color-light);
+    min-height: 200px;
+
+    i {
+      font-size: var(--w-font-size-h1);
+      opacity: 0.4;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    p {
+      margin: 0;
+      font-size: var(--w-font-size-md);
+    }
+  }
+
+  &__error {
+    color: var(--w-danger-color);
+
+    i {
+      animation: shake 0.5s ease-in-out;
+    }
+  }
+
+  &__skeleton-item {
+    @include flex(row, flex-start, center);
+    padding: var(--w-spacing-md);
+    gap: var(--w-spacing-md);
+    animation: pulse-bg 1.5s ease-in-out infinite;
+  }
+
+  &__skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--w-border-radius-circle);
+    background: linear-gradient(90deg,
+        rgba(var(--w-background-color-rgb), 0.1),
+        rgba(var(--w-background-color-rgb), 0.2),
+        rgba(var(--w-background-color-rgb), 0.1));
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  &__skeleton-lines {
+    flex: 1;
+    @include flex(column, stretch, stretch);
+    gap: var(--w-spacing-sm);
+  }
+
+  &__skeleton-line {
+    height: 12px;
+    background: linear-gradient(90deg,
+        rgba(var(--w-background-color-rgb), 0.1),
+        rgba(var(--w-background-color-rgb), 0.2),
+        rgba(var(--w-background-color-rgb), 0.1));
+    background-size: 200% 100%;
+    border-radius: var(--w-border-radius);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+
+    &--short {
+      width: 60%;
+    }
+  }
+
+  &__loading-more {
+    @include flex(row, center, center);
+    padding: var(--w-spacing-md);
+    color: var(--w-text-color-light);
+    gap: var(--w-spacing-sm);
+    font-size: var(--w-font-size-sm);
+  }
+
+  // ============================================
+  // RESPONSIVE
+  // ============================================
+  @include breakpoint(tablet) {
+    min-width: 360px;
+    max-width: calc(100vw - 32px);
+  }
+
+  @media (max-width: 1200px) {
+    min-width: 380px;
+    max-width: calc(100vw - 32px);
+  }
+}

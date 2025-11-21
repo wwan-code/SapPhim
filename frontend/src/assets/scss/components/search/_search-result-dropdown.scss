@@ -1,0 +1,337 @@
+@use '../../variables' as *;
+@use '../../mixins' as *;
+
+@include floating-element-animations;
+
+.search-results {
+  border-radius: var(--w-border-radius-xl);
+  z-index: var(--w-zindex-dropdown);
+  overflow: hidden;
+  will-change: transform, opacity;
+  isolation: isolate;
+  
+  min-width: 320px;
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  @include search-dropdown-shell;
+  // Fallback for browsers without backdrop-filter
+  @supports not (backdrop-filter: blur(var(--w-blur-sm))) {
+    background: rgba(var(--w-background-color-rgb), 0.98);
+  }
+
+  &[data-open="false"] {
+    pointer-events: none;
+  }
+
+  // Shell animations based on placement
+  &--open {
+    &[data-placement^="bottom"] {
+      @include motion(liquidUnfold,
+        var(--w-motion-duration-slow),
+        var(--w-motion-easing-elegant));
+    }
+
+    &[data-placement^="top"] {
+      animation: liquidUnfoldUp var(--w-motion-duration-slow) var(--w-motion-easing-elegant) forwards;
+    }
+  }
+
+  &--closing {
+    &[data-placement^="bottom"] {
+      @include motion(liquidCompressAndFold,
+        var(--w-motion-duration-fast),
+        var(--w-motion-easing-snappy));
+    }
+
+    &[data-placement^="top"] {
+      animation: liquidCompressAndFoldUp var(--w-motion-duration-fast) var(--w-motion-easing-snappy) forwards;
+    }
+  }
+
+  &__content-wrapper {
+    @include floating-element-content;
+    height: 100%;
+    position: relative;
+  }
+
+  &__container {
+    flex: 1;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 12px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: var(--w-spacing-sm);
+    position: relative;
+    z-index: 2;
+
+    // Hide default scrollbar
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // ============================================
+  // CUSTOM SCROLLBAR
+  // ============================================
+  &__scrollbar {
+    position: absolute;
+    top: var(--w-spacing-sm);
+    right: 4px;
+    width: 4px;
+    height: calc(100% - calc(var(--w-spacing-sm) * 2));
+    pointer-events: none;
+    opacity: 0;
+    @include liquid-motion(opacity, 0.2s);
+    z-index: 3;
+  }
+
+  &__scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    border-radius: 999px;
+    background-color: rgba(var(--w-primary-color-rgb), 0.4);
+    pointer-events: auto;
+    cursor: grab;
+    @include liquid-motion(background-color, 0.2s);
+
+    &:hover {
+      background-color: rgba(var(--w-primary-color-rgb), 0.6);
+    }
+
+    &:active {
+      cursor: grabbing;
+      background-color: rgba(var(--w-primary-color-rgb), 0.8);
+    }
+  }
+
+  // Show scrollbar on hover
+  &:hover &__scrollbar {
+    opacity: 1;
+  }
+
+  // ============================================
+  // RESULTS LIST
+  // ============================================
+  &__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    @include flex(column, stretch, stretch);
+    gap: var(--w-spacing-xs);
+  }
+
+  // ============================================
+  // RESULT ITEM - LIQUID GLASS INTERACTIVE
+  // ============================================
+  &__item {
+    @include flex(row, flex-start, center);
+    padding: var(--w-spacing-sm);
+    gap: var(--w-spacing-md);
+    border-radius: var(--w-border-radius-md);
+    cursor: pointer;
+    position: relative;
+    isolation: isolate;
+    @include liquid-motion(all, 0.2s, var(--w-motion-easing-spring));
+
+    // Hover background layer
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg,
+          rgba(var(--w-primary-color-rgb), 0.08),
+          transparent 60%);
+      opacity: 0;
+      @include liquid-motion(opacity, 0.2s);
+      z-index: 0;
+    }
+
+    &:hover {
+      transform: translateX(4px) scale(1.01);
+
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    &:active {
+      transform: translateX(2px) scale(0.99);
+    }
+
+    // Active (keyboard navigation) state
+    &--active {
+      background: rgba(var(--w-primary-color-rgb), 0.12);
+
+      &::before {
+        opacity: 0.5;
+      }
+    }
+
+    @include focus-visible();
+
+    @media (prefers-reduced-motion: reduce) {
+
+      &:hover,
+      &:active {
+        transform: none;
+      }
+    }
+  }
+
+  &__item-poster {
+    width: 50px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: var(--w-border-radius);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 1;
+  }
+
+  &__item-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__item-title {
+    font-size: var(--w-font-size-sm);
+    font-weight: var(--w-font-weight-semibold);
+    color: var(--w-text-color);
+    margin: 0 0 var(--w-spacing-xs) 0;
+    @include text-truncate(2);
+  }
+
+  &__item-meta {
+    font-size: var(--w-font-size-xs);
+    color: var(--w-text-color-light);
+    margin: 0;
+  }
+
+  &__highlight {
+    background: linear-gradient(135deg,
+        rgba(var(--w-primary-color-rgb), 0.25),
+        rgba(var(--w-primary-color-rgb), 0.15));
+    color: var(--w-primary-color);
+    font-weight: var(--w-font-weight-bold);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+
+  // Ripple effect on tap
+  &__item-ripple {
+    @include liquid-glass-ripple(rgba(255, 255, 255, 0.3));
+  }
+
+  // ============================================
+  // STATES: LOADING, EMPTY, ERROR
+  // ============================================
+  &__empty {
+    padding: var(--w-spacing-lg);
+    text-align: center;
+  }
+
+  &__empty {
+    @include flex(column, center, center);
+    gap: var(--w-spacing-md);
+    color: var(--w-text-color-light);
+    min-height: 200px;
+
+    i {
+      font-size: 3rem;
+      opacity: 0.4;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    p {
+      margin: 0;
+      font-size: var(--w-font-size-md);
+    }
+  }
+
+  // ============================================
+  // SKELETON LOADING
+  // ============================================
+  &__skeleton-item {
+    @include flex(row, flex-start, center);
+    padding: var(--w-spacing-sm);
+    gap: var(--w-spacing-md);
+    animation: pulse-bg 1.5s ease-in-out infinite;
+  }
+
+  &__skeleton-poster {
+    width: 50px;
+    height: 75px;
+    border-radius: var(--w-border-radius);
+    background: linear-gradient(90deg,
+        rgba(var(--w-background-color-rgb), 0.1),
+        rgba(var(--w-background-color-rgb), 0.2),
+        rgba(var(--w-background-color-rgb), 0.1));
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  &__skeleton-content {
+    flex: 1;
+    @include flex(column, stretch, stretch);
+    gap: var(--w-spacing-sm);
+  }
+
+  &__skeleton-line {
+    height: 12px;
+    background: linear-gradient(90deg,
+        rgba(var(--w-background-color-rgb), 0.1),
+        rgba(var(--w-background-color-rgb), 0.2),
+        rgba(var(--w-background-color-rgb), 0.1));
+    background-size: 200% 100%;
+    border-radius: var(--w-border-radius);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+
+    &--short {
+      width: 60%;
+    }
+  }
+
+  // ============================================
+  // RESPONSIVE
+  // ============================================
+  @include breakpoint(mobile) {
+    min-width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+    max-height: 60vh;
+
+    &__container {
+      padding: var(--w-spacing-xs);
+    }
+
+    &__item {
+      padding: var(--w-spacing-xs);
+      gap: var(--w-spacing-sm);
+    }
+
+    &__item-poster {
+      width: 40px;
+      height: 60px;
+    }
+
+    &__item-title {
+      font-size: var(--w-font-size-xs);
+    }
+
+    &__item-meta {
+      font-size: 10px;
+    }
+  }
+}

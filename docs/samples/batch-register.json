@@ -1,0 +1,25 @@
+[
+  {
+    "action": "register",
+    "email": "user1@sapphim.com",
+    "password": "password123",
+    "confPassword": "password123",
+    "username": "user1",
+    "phoneNumber": "0123456789"
+  },
+  {
+    "action": "register",
+    "email": "user2@sapphim.com",
+    "password": "password456",
+    "confPassword": "password456",
+    "username": "user2",
+    "phoneNumber": "0987654321"
+  },
+  {
+    "action": "register",
+    "email": "user3@sapphim.com",
+    "password": "password789",
+    "confPassword": "password789",
+    "username": "user3"
+  }
+]

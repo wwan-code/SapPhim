@@ -1,0 +1,3 @@
+action: login
+email: demo@sapphim.com
+password: demo123456

@@ -1,0 +1,105 @@
+@use '../../_variables' as *;
+@use '../../_mixins' as *;
+
+.file-dropzone {
+  @include liquid-glass-complete(
+    $opacity: var(--w-glass-opacity-light),
+    $blur: var(--w-blur-md),
+    $depth: 'medium',
+    $add-highlight: false
+  );
+  border-radius: var(--w-border-radius-lg);
+  padding: var(--w-spacing-xl);
+  margin-top: var(--w-spacing-lg);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  @include liquid-motion(all, var(--w-motion-duration-medium));
+  border: 2px dashed rgba(var(--w-primary-color-rgb), 0.3);
+
+  &:hover:not(&--disabled) {
+    border-color: rgba(var(--w-primary-color-rgb), 0.6);
+    transform: translateY(-2px);
+    @include liquid-glass-shadow('elevated');
+  }
+
+  &:focus-visible {
+    @include focus-visible;
+  }
+
+  &--dragging {
+    border-color: var(--w-primary-color);
+    background-color: rgba(var(--w-primary-color-rgb), 0.05);
+    transform: scale(1.02);
+  }
+
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.file-dropzone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.file-dropzone__content {
+  @include flex(column, center, center);
+  gap: var(--w-spacing-md);
+  text-align: center;
+}
+
+.file-dropzone__icon {
+  font-size: 3rem;
+  color: var(--w-primary-color);
+  opacity: 0.7;
+  @include liquid-motion(transform, var(--w-motion-duration-fast));
+
+  .file-dropzone:hover & {
+    transform: scale(1.1);
+  }
+
+  .file-dropzone--dragging & {
+    transform: scale(1.2);
+    animation: float 2s ease-in-out infinite;
+  }
+}
+
+.file-dropzone__text {
+  @include flex(column, center, center);
+  gap: var(--w-spacing-xs);
+}
+
+.file-dropzone__title {
+  font-size: var(--w-font-size-md);
+  font-weight: var(--w-font-weight-semibold);
+  color: var(--w-text-color);
+  margin: 0;
+}
+
+.file-dropzone__subtitle {
+  font-size: var(--w-font-size-sm);
+  color: var(--w-text-color-light);
+  opacity: 0.7;
+  margin: 0;
+}
+
+.file-dropzone__button {
+  @include button-style(var(--w-primary-color), var(--w-white));
+  padding: var(--w-spacing-sm) var(--w-spacing-lg);
+  font-size: var(--w-font-size-sm);
+  font-weight: var(--w-font-weight-semibold);
+  border-radius: var(--w-border-radius-md);
+  @include flex(row, center, center);
+  gap: var(--w-spacing-xs);
+
+  i {
+    font-size: var(--w-font-size-md);
+  }
+}
