@@ -335,6 +335,54 @@ const attachEventHandlers = () => {
     queueEvent(
       'friendship:update',
       () => {
+          const currentUserId = getCurrentUserId();
+
+          // Optimistically remove cancelled friendships from cache
+          if (payload.type === 'cancelled' && currentUserId) {
+            const friendshipId = payload.friendshipId;
+
+            // Remove from pending requests if current user is receiver
+            if (payload.receiverId === currentUserId) {
+              queryClient.setQueryData(
+                friendQueryKeys.pending(),
+                (oldData) => {
+                  if (!oldData || !oldData.pages) return oldData;
+
+                  return {
+                    ...oldData,
+                    pages: oldData.pages.map(page => ({
+                      ...page,
+                      data: Array.isArray(page.data)
+                        ? page.data.filter(item => item.id !== friendshipId)
+                        : page.data,
+                    })),
+                  };
+                }
+              );
+            }
+
+            // Remove from sent requests if current user is sender
+            if (payload.senderId === currentUserId) {
+              queryClient.setQueryData(
+                friendQueryKeys.sent(),
+                (oldData) => {
+                  if (!oldData || !oldData.pages) return oldData;
+
+                  return {
+                    ...oldData,
+                    pages: oldData.pages.map(page => ({
+                      ...page,
+                      data: Array.isArray(page.data)
+                        ? page.data.filter(item => item.id !== friendshipId)
+                        : page.data,
+                    })),
+                  };
+                }
+              );
+            }
+          }
+
+          // Invalidate all friend-related queries to ensure consistency
         queryClient.invalidateQueries({ queryKey: friendQueryKeys.lists() });
         queryClient.invalidateQueries({ queryKey: friendQueryKeys.pending() });
         queryClient.invalidateQueries({ queryKey: friendQueryKeys.sent() });
