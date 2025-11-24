@@ -39,6 +39,14 @@ class RedisPoolManager {
             pubsub: null,
         };
         this.isInitialized = false;
+        // Circuit breaker state
+        this.circuitBreaker = {
+            main: { failures: 0, state: 'closed', lastFailure: null },
+            cache: { failures: 0, state: 'closed', lastFailure: null },
+            pubsub: { failures: 0, state: 'closed', lastFailure: null },
+        };
+        this.CIRCUIT_BREAKER_THRESHOLD = 5;
+        this.CIRCUIT_BREAKER_TIMEOUT = 30000; // 30s
     }
 
     // Factory for creating a single Redis client
@@ -66,21 +74,21 @@ class RedisPoolManager {
 
         console.log('🔄 Initializing Redis Connection Pools...');
 
-        // 1. Main Pool (Writes, Critical Ops)
+        // 1. Main Pool (Writes, Critical Ops) - Optimized for production
         this.pools.main = createPool(
             this.createClientFactory('Main'),
             createPoolConfig(
-                parseInt(process.env.REDIS_POOL_MAIN_MAX, 10) || 5,
-                parseInt(process.env.REDIS_POOL_MAIN_MIN, 10) || 2
+                parseInt(process.env.REDIS_POOL_MAIN_MAX, 10) || 8,
+                parseInt(process.env.REDIS_POOL_MAIN_MIN, 10) || 3
             )
         );
 
-        // 2. Cache Pool (Reads, High Volume)
+        // 2. Cache Pool (Reads, High Volume) - Increased for high read workload
         this.pools.cache = createPool(
             this.createClientFactory('Cache'),
             createPoolConfig(
-                parseInt(process.env.REDIS_POOL_CACHE_MAX, 10) || 10,
-                parseInt(process.env.REDIS_POOL_CACHE_MIN, 10) || 3
+                parseInt(process.env.REDIS_POOL_CACHE_MAX, 10) || 15,
+                parseInt(process.env.REDIS_POOL_CACHE_MIN, 10) || 5
             )
         );
 
@@ -101,10 +109,37 @@ class RedisPoolManager {
         if (!this.pools[type]) {
             throw new Error(`Invalid pool type: ${type}`);
         }
+
+        // Check circuit breaker
+        const breaker = this.circuitBreaker[type];
+        if (breaker.state === 'open') {
+            const timeSinceFailure = Date.now() - breaker.lastFailure;
+            if (timeSinceFailure > this.CIRCUIT_BREAKER_TIMEOUT) {
+                breaker.state = 'half-open';
+                console.log(`Circuit breaker for ${type} pool entering half-open state`);
+            } else {
+                throw new Error(`Circuit breaker open for ${type} pool`);
+            }
+        }
+
         try {
-            return await this.pools[type].acquire();
+            const connection = await this.pools[type].acquire();
+            // Success - reset circuit breaker
+            if (breaker.state === 'half-open') {
+                breaker.state = 'closed';
+                breaker.failures = 0;
+                console.log(`Circuit breaker for ${type} pool closed`);
+            }
+            return connection;
         } catch (error) {
             console.error(`Failed to acquire connection from ${type} pool:`, error);
+            // Track failure
+            breaker.failures++;
+            breaker.lastFailure = Date.now();
+            if (breaker.failures >= this.CIRCUIT_BREAKER_THRESHOLD) {
+                breaker.state = 'open';
+                console.error(`Circuit breaker opened for ${type} pool after ${breaker.failures} failures`);
+            }
             throw error;
         }
     }
@@ -257,11 +292,29 @@ export const redisHelpers = {
         let client;
         try {
             client = await redisPoolManager.getConnection('main');
-            const keys = await client.keys(pattern);
-            if (keys.length > 0) {
-                return await client.del(keys);
+            // Use SCAN instead of KEYS to avoid blocking Redis
+            let cursor = '0';
+            let deletedCount = 0;
+            const batchSize = 100;
+
+            do {
+                const result = await client.scan(cursor, {
+                    MATCH: pattern,
+                    COUNT: batchSize
+                });
+                cursor = result.cursor;
+                const keys = result.keys;
+
+                if (keys.length > 0) {
+                    const deleted = await client.del(keys);
+                    deletedCount += deleted;
+                }
+            } while (cursor !== '0');
+
+            if (deletedCount > 0) {
+                console.log(`Invalidated ${deletedCount} keys matching pattern: ${pattern}`);
             }
-            return 0;
+            return deletedCount;
         } catch (error) {
             console.error(`Redis pattern invalidation error for ${pattern}:`, error);
             return 0;
