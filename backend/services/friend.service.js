@@ -1,13 +1,82 @@
 import db from '../models/index.js';
 import { Op } from 'sequelize';
 import { getIo } from '../config/socket.js';
-import { createNotification } from './notification.service.js';
+import { createNotification, deleteNotificationByFriendship } from './notification.service.js';
 import { generateNotificationContent } from '../utils/notification.utils.js';
 import { redisHelpers } from '../config/redis.js';
-import redisClient from '../config/redis.js';
 import { REDIS_CHANNELS } from '../config/socket.js';
+import { safeSocketEmit, safeRedisPublish } from '../utils/socket.utils.js';
 
-const { User, Friendship } = db;
+const { User, Friendship, Notification } = db;
+
+/**
+ * Check if two users have mutual friends (optimized)
+ * @private
+ */
+const checkMutualFriends = async (senderId, receiverId, transaction) => {
+  const cacheKey = `mutual:${Math.min(senderId, receiverId)}:${Math.max(senderId, receiverId)}`;
+
+  try {
+    const cached = await redisHelpers.safeGet(cacheKey);
+    if (cached !== null) {
+      return cached === 'true';
+    }
+
+    // Optimized query - only check if mutual friends exist (LIMIT 1)
+    const result = await db.sequelize.query(`
+      SELECT 1 as hasMutual
+      FROM Friendships f1
+      INNER JOIN Friendships f2 ON (
+        CASE 
+          WHEN f1.senderId = :senderId THEN f1.receiverId
+          WHEN f1.receiverId = :senderId THEN f1.senderId
+        END = CASE 
+          WHEN f2.senderId = :receiverId THEN f2.receiverId
+          WHEN f2.receiverId = :receiverId THEN f2.senderId
+        END
+      )
+      WHERE (f1.senderId = :senderId OR f1.receiverId = :senderId)
+      AND (f2.senderId = :receiverId OR f2.receiverId = :receiverId)
+      AND f1.status = 'accepted' 
+      AND f2.status = 'accepted'
+      LIMIT 1
+    `, {
+      replacements: { senderId, receiverId },
+      type: db.sequelize.QueryTypes.SELECT,
+      transaction,
+      timeout: 5000 // 5 second timeout
+    });
+
+    const hasMutual = result && result.length > 0;
+
+    // Cache for 1 hour
+    await redisHelpers.safeSet(cacheKey, hasMutual ? 'true' : 'false', 3600);
+
+    return hasMutual;
+  } catch (error) {
+    console.error('[checkMutualFriends] Error:', error.message);
+    // On error, default to allowing the request
+    return true;
+  }
+};
+
+/**
+ * Invalidate all friend-related caches for given user IDs
+ * @private
+ */
+const invalidateFriendCaches = async (...userIds) => {
+  try {
+    const invalidations = userIds.flatMap(userId => [
+      redisHelpers.invalidatePattern(`user:${userId}:friends:*`),
+      redisHelpers.invalidatePattern(`search:users:${userId}:*`)
+    ]);
+
+    await Promise.allSettled(invalidations);
+  } catch (error) {
+    console.error('[invalidateFriendCaches] Error:', error.message);
+    // Non-critical, don't throw
+  }
+};
 
 /**
  * @desc Gửi lời mời kết bạn
@@ -20,104 +89,102 @@ const sendFriendRequest = async (senderId, receiverId) => {
     throw new Error('Không thể gửi lời mời kết bạn cho chính mình.');
   }
 
-  // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
-  const friendship = await db.sequelize.transaction(async (t) => {
-    // Kiểm tra xem người nhận có tồn tại không
-    const sender = await User.findByPk(senderId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'], transaction: t });
-    const receiver = await User.findByPk(receiverId, { 
-      attributes: ['id', 'uuid', 'username', 'avatarUrl', 'canReceiveFriendRequests'], 
-      transaction: t 
-    });
-    if (!receiver) {
-      throw new Error('Người nhận không tồn tại.');
-    }
+  let friendship;
 
-    // Check if receiver allows friend requests
-    if (receiver.canReceiveFriendRequests === 'nobody') {
-      throw new Error('Người dùng này không nhận lời mời kết bạn.');
-    }
-
-    // Check if sender is friend of receiver's friends (for friends_of_friends setting)
-    if (receiver.canReceiveFriendRequests === 'friends_of_friends') {
-      // Check if they have mutual friends
-      const mutualFriendsCount = await db.sequelize.query(`
-        SELECT COUNT(DISTINCT sf.mutual_friend_id) as count
-        FROM (
-          SELECT CASE 
-            WHEN f1.senderId = :senderId THEN f1.receiverId
-            WHEN f1.receiverId = :senderId THEN f1.senderId
-          END as mutual_friend_id
-          FROM Friendships f1
-          WHERE (f1.senderId = :senderId OR f1.receiverId = :senderId)
-          AND f1.status = 'accepted'
-        ) AS sf
-        INNER JOIN (
-          SELECT CASE 
-            WHEN f2.senderId = :receiverId THEN f2.receiverId
-            WHEN f2.receiverId = :receiverId THEN f2.senderId
-          END as mutual_friend_id
-          FROM Friendships f2
-          WHERE (f2.senderId = :receiverId OR f2.receiverId = :receiverId)
-          AND f2.status = 'accepted'
-        ) AS rf
-        ON sf.mutual_friend_id = rf.mutual_friend_id
-      `, {
-        replacements: { senderId, receiverId },
-        type: db.sequelize.QueryTypes.SELECT,
+  // Transaction with proper error handling
+  try {
+    friendship = await db.sequelize.transaction(async (t) => {
+      // Validate sender existence and status
+      const sender = await User.findByPk(senderId, {
+        attributes: ['id', 'uuid', 'username', 'avatarUrl', 'status'],
         transaction: t
       });
 
-      console.log("mutualFriendsCount", mutualFriendsCount);
-
-      if (!mutualFriendsCount || mutualFriendsCount[0].count === 0) {
-        throw new Error('Người dùng này chỉ nhận lời mời kết bạn từ bạn của bạn bè.');
+      if (!sender) {
+        throw new Error('Người gửi không tồn tại.');
       }
-    }
 
-    // Kiểm tra xem đã có lời mời nào giữa hai người chưa
-    const existingFriendship = await Friendship.findOne({
-      where: {
-        [Op.or]: [
-          { senderId: senderId, receiverId: receiverId },
-          { senderId: receiverId, receiverId: senderId },
-        ],
-      },
-      transaction: t,
+      if (sender.status !== 'active') {
+        throw new Error('Tài khoản của bạn đã bị khóa.');
+      }
+
+      // Validate receiver existence and settings
+      const receiver = await User.findByPk(receiverId, {
+        attributes: ['id', 'uuid', 'username', 'avatarUrl', 'canReceiveFriendRequests', 'status'],
+        transaction: t
+      });
+
+      if (!receiver) {
+        throw new Error('Người nhận không tồn tại.');
+      }
+
+      if (receiver.status !== 'active') {
+        throw new Error('Tài khoản người nhận đã bị khóa.');
+      }
+
+      // Check receiver's friend request settings
+      if (receiver.canReceiveFriendRequests === 'nobody') {
+        throw new Error('Người dùng này không nhận lời mời kết bạn.');
+      }
+
+      // Check mutual friends requirement
+      if (receiver.canReceiveFriendRequests === 'friends_of_friends') {
+        const hasMutualFriends = await checkMutualFriends(senderId, receiverId, t);
+
+        if (!hasMutualFriends) {
+          throw new Error('Người dùng này chỉ nhận lời mời kết bạn từ bạn của bạn bè.');
+        }
+      }
+
+      // Pessimistic locking to prevent race conditions
+      const existingFriendship = await Friendship.findOne({
+        where: {
+          [Op.or]: [
+            { senderId: senderId, receiverId: receiverId },
+            { senderId: receiverId, receiverId: senderId },
+          ],
+        },
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+
+      if (existingFriendship) {
+        if (existingFriendship.status === 'pending') {
+          throw new Error('Lời mời kết bạn đã được gửi và đang chờ phản hồi.');
+        } else if (existingFriendship.status === 'accepted') {
+          throw new Error('Hai bạn đã là bạn bè.');
+        } else if (existingFriendship.status === 'rejected' || existingFriendship.status === 'cancelled') {
+          // Allow resending after rejection/cancellation
+          await existingFriendship.destroy({ transaction: t });
+        }
+      }
+
+      // Create new friendship
+      const newFriendship = await Friendship.create({
+        senderId,
+        receiverId,
+        status: 'pending',
+      }, { transaction: t });
+
+      return newFriendship;
     });
+  } catch (error) {
+    console.error('[sendFriendRequest] Transaction failed:', error.message);
+    throw error;
+  }
 
-    if (existingFriendship) {
-      if (existingFriendship.status === 'pending') {
-        throw new Error('Lời mời kết bạn đã được gửi và đang chờ phản hồi.');
-      } else if (existingFriendship.status === 'accepted') {
-        throw new Error('Hai bạn đã là bạn bè.');
-      } else if (existingFriendship.status === 'rejected' || existingFriendship.status === 'cancelled') {
-        // Nếu đã từ chối hoặc hủy, có thể tạo lại lời mời mới hoặc cập nhật trạng thái
-        // Ở đây, chúng ta sẽ tạo một lời mời mới để đơn giản
-        await existingFriendship.destroy({ transaction: t }); // Xóa lời mời cũ để tạo mới
-      }
-    }
+  // Invalidate caches AFTER successful transaction
+  await invalidateFriendCaches(senderId, receiverId);
 
-    const newFriendship = await Friendship.create({
-      senderId,
-      receiverId,
-      status: 'pending',
-    }, { transaction: t });
-
-    // Invalidate cache cho người gửi và người nhận
-    // Xóa cache danh sách bạn bè của người gửi và người nhận
-    await redisHelpers.safeDel(`user:${senderId}:friends`);
-    await redisHelpers.safeDel(`user:${receiverId}:friends`);
-    // Xóa cache tìm kiếm của người gửi và người nhận
-    await redisHelpers.invalidatePattern(`search:users:${senderId}:*`);
-    await redisHelpers.invalidatePattern(`search:users:${receiverId}:*`);
-
-    return newFriendship;
+  // Fetch user info for notifications
+  const sender = await User.findByPk(senderId, {
+    attributes: ['id', 'uuid', 'username', 'avatarUrl']
+  });
+  const receiver = await User.findByPk(receiverId, {
+    attributes: ['id', 'uuid', 'username', 'avatarUrl']
   });
 
-  // Lấy thông tin người gửi và người nhận sau khi transaction thành công
-  const sender = await User.findByPk(senderId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'] });
-  const receiver = await User.findByPk(receiverId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'] });
-
+  // Emit socket events
   const io = getIo();
   const friendRequestData = {
     id: friendship.id,
@@ -129,26 +196,30 @@ const sendFriendRequest = async (senderId, receiverId) => {
     createdAt: friendship.createdAt,
   };
 
-  // Emit trực tiếp cho người nhận và người gửi
-  io.to(`user_${receiverId}`).emit('friendRequestReceived', friendRequestData);
-  io.to(`user_${senderId}`).emit('friendRequestSent', friendRequestData);
+  safeSocketEmit(io, `user_${receiverId}`, 'friend:request', friendRequestData);
+  safeSocketEmit(io, `user_${senderId}`, 'friend:request:sent', friendRequestData);
 
-  // Publish lên Redis Pub/Sub để các server khác cũng nhận được
-  if (redisClient.status === 'ready') {
-    await redisClient.publish(REDIS_CHANNELS.FRIEND_REQUEST, JSON.stringify(friendRequestData));
+  // Publish to Redis Pub/Sub
+  await safeRedisPublish(REDIS_CHANNELS.FRIEND_REQUEST, friendRequestData);
+
+  // Create notification
+  try {
+    const { title, body } = generateNotificationContent('friend_request', {
+      senderName: sender.username
+    });
+    await createNotification({
+      userId: receiverId,
+      type: 'friend_request',
+      title,
+      body,
+      link: `/profile/${sender.uuid}`,
+      senderId,
+      metadata: { friendshipId: friendship.id }
+    });
+  } catch (notifError) {
+    console.error('[sendFriendRequest] Failed to create notification:', notifError.message);
+    // Non-critical, don't throw
   }
-
-  // Tạo thông báo cho người nhận
-  const { title, body } = generateNotificationContent('friend_request', { senderName: sender.username });
-  await createNotification({
-    userId: receiverId,
-    type: 'friend_request',
-    title,
-    body,
-    link: `/profile/${sender.uuid}`,
-    senderId,
-    metadata: { friendshipId: friendship.id }
-  });
 
   return friendship;
 };
@@ -165,12 +236,11 @@ const getFriends = async (userId, query = null, page = 1, limit = 10) => {
   try {
     // Validate inputs
     const validPage = Math.max(1, parseInt(page) || 1);
-    const validLimit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Max 50 per page
+    const validLimit = Math.min(50, Math.max(1, parseInt(limit) || 10));
     const offset = (validPage - 1) * validLimit;
 
-    // Build cache key with pagination
     const cacheKey = `user:${userId}:friends:${query || 'all'}:${validPage}:${validLimit}`;
-    
+
     // Try cache first (only for first page without query)
     if (validPage === 1 && !query) {
       const cachedFriends = await redisHelpers.safeGet(cacheKey);
@@ -179,86 +249,117 @@ const getFriends = async (userId, query = null, page = 1, limit = 10) => {
       }
     }
 
-    // Fetch from DB with pagination
-    const whereCondition = {
-      [Op.or]: [{ senderId: userId }, { receiverId: userId }],
-      status: 'accepted',
-    };
+    const searchQuery = query && query.trim() ? query.trim() : null;
+    const replacements = { userId };
 
-    // Count total friends
-    const totalFriendships = await Friendship.count({ where: whereCondition });
+    // Build query to get friend IDs with proper SQL escaping
+    let friendIdsQuery = `
+      SELECT DISTINCT CASE 
+        WHEN f.senderId = :userId THEN f.receiverId
+        ELSE f.senderId
+      END as friendId
+      FROM Friendships f
+      WHERE (f.senderId = :userId OR f.receiverId = :userId)
+      AND f.status = 'accepted'
+    `;
 
-    // Fetch friendships with pagination
-    const friendships = await Friendship.findAll({
-      where: whereCondition,
-      include: [
-        {
-          model: User,
-          as: 'sender',
-          attributes: ['id', 'uuid', 'username', 'avatarUrl', 'online', 'lastOnline', 'showOnlineStatus'],
+    // Add search filter if provided
+    if (searchQuery) {
+      friendIdsQuery = `
+        SELECT DISTINCT CASE 
+          WHEN f.senderId = :userId THEN f.receiverId
+          ELSE f.senderId
+        END as friendId
+        FROM Friendships f
+        INNER JOIN Users u ON (
+          (f.senderId = :userId AND u.id = f.receiverId) OR
+          (f.receiverId = :userId AND u.id = f.senderId)
+        )
+        WHERE (f.senderId = :userId OR f.receiverId = :userId)
+        AND f.status = 'accepted'
+        AND u.username LIKE :searchQuery
+      `;
+      replacements.searchQuery = `%${searchQuery}%`;
+    }
+
+    // Get all friend IDs matching criteria
+    const friendIdsResult = await db.sequelize.query(friendIdsQuery, {
+      replacements,
+      type: db.sequelize.QueryTypes.SELECT,
+    });
+
+    const friendIds = friendIdsResult.map(row => row.friendId);
+
+    if (friendIds.length === 0) {
+      const emptyResult = {
+        data: [],
+        meta: {
+          page: validPage,
+          limit: validLimit,
+          total: 0,
+          totalPages: 0,
+          hasMore: false,
         },
-        {
-          model: User,
-          as: 'receiver',
-          attributes: ['id', 'uuid', 'username', 'avatarUrl', 'online', 'lastOnline', 'showOnlineStatus'],
-        },
+      };
+
+      if (validPage === 1 && !query) {
+        await redisHelpers.safeSet(cacheKey, emptyResult, 300);
+      }
+
+      return emptyResult;
+    }
+
+    // Total count
+    const total = friendIds.length;
+    const totalPages = Math.ceil(total / validLimit);
+
+    // Fetch paginated friends with proper attributes
+    const friends = await User.findAll({
+      where: { id: { [Op.in]: friendIds } },
+      attributes: [
+        'id', 'uuid', 'username', 'avatarUrl',
+        'online', 'lastOnline', 'showOnlineStatus'
       ],
       limit: validLimit,
       offset: offset,
-      order: [['createdAt', 'DESC']],
+      order: [['username', 'ASC']],
     });
 
-    // Extract friend info
-    let friends = friendships.map((f) => {
-      return f.senderId === userId ? f.receiver.get({ plain: true }) : f.sender.get({ plain: true });
-    });
+    // Transform results with privacy settings
+    const transformedFriends = friends.map(friend => {
+      const friendData = friend.get({ plain: true });
 
-    // Apply search filter if query provided
-    if (query && query.trim()) {
-      const qLower = query.toLowerCase().trim();
-      friends = friends.filter((u) => (u?.username || '').toLowerCase().includes(qLower));
-    }
-
-    // Remove duplicates by id
-    const uniqueById = new Map();
-    for (const u of friends) {
-      if (!uniqueById.has(u.id)) uniqueById.set(u.id, u);
-    }
-
-    const uniqueFriends = Array.from(uniqueById.values()).map((friend) => {
-      const sanitized = { ...friend };
-      if (sanitized.showOnlineStatus === false) {
-        sanitized.online = false;
-        sanitized.lastOnline = null;
-        sanitized.hidden = true;
+      if (friendData.showOnlineStatus === false) {
+        friendData.online = false;
+        friendData.lastOnline = null;
+        friendData.hidden = true;
       } else {
-        sanitized.hidden = false;
+        friendData.hidden = false;
       }
-      delete sanitized.showOnlineStatus;
-      return sanitized;
+
+      delete friendData.showOnlineStatus;
+      return friendData;
     });
-    const totalPages = Math.ceil(totalFriendships / validLimit);
-    const hasMore = validPage < totalPages;
 
     const result = {
-      data: uniqueFriends,
+      data: transformedFriends,
       meta: {
         page: validPage,
         limit: validLimit,
-        total: totalFriendships,
+        total: total,
         totalPages: totalPages,
-        hasMore: hasMore,
+        hasMore: validPage < totalPages,
       },
     };
 
-    // Cache result for 5 minutes (only first page without query)
+    // Cache result (only first page without query)
     if (validPage === 1 && !query) {
       await redisHelpers.safeSet(cacheKey, result, 300);
     }
 
     return result;
   } catch (error) {
-    console.error('Error in getFriends:', error);
+    console.error('[getFriends] Error:', error.message);
     throw error;
   }
 };
@@ -312,7 +413,7 @@ const getPendingFriendRequests = async (userId, page = 1, limit = 10) => {
       },
     };
   } catch (error) {
-    console.error('Error in getPendingFriendRequests:', error);
+    console.error('[getPendingFriendRequests] Error:', error.message);
     throw error;
   }
 };
@@ -366,7 +467,7 @@ const getSentFriendRequests = async (userId, page = 1, limit = 10) => {
       },
     };
   } catch (error) {
-    console.error('Error in getSentFriendRequests:', error);
+    console.error('[getSentFriendRequests] Error:', error.message);
     throw error;
   }
 };
@@ -378,73 +479,85 @@ const getSentFriendRequests = async (userId, page = 1, limit = 10) => {
  * @returns {Promise<Friendship>} Đối tượng Friendship đã cập nhật
  */
 const acceptFriendRequest = async (userId, inviteId) => {
-  // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
-  const friendship = await db.sequelize.transaction(async (t) => {
-    const existingFriendship = await Friendship.findOne({
-      where: {
-        id: inviteId,
-        receiverId: userId,
-        status: 'pending',
-      },
-      transaction: t,
+  let friendship;
+
+  try {
+    friendship = await db.sequelize.transaction(async (t) => {
+      const existingFriendship = await Friendship.findOne({
+        where: {
+          id: inviteId,
+          receiverId: userId,
+          status: 'pending',
+        },
+        transaction: t,
+      });
+
+      if (!existingFriendship) {
+        throw new Error('Lời mời kết bạn không tồn tại hoặc không thể chấp nhận.');
+      }
+
+      existingFriendship.status = 'accepted';
+      await existingFriendship.save({ transaction: t });
+
+      return existingFriendship;
     });
+  } catch (error) {
+    console.error('[acceptFriendRequest] Transaction failed:', error.message);
+    throw error;
+  }
 
-    if (!existingFriendship) {
-      throw new Error('Lời mời kết bạn không tồn tại hoặc không thể chấp nhận.');
-    }
+  // Invalidate caches AFTER successful transaction
+  await invalidateFriendCaches(friendship.senderId, friendship.receiverId);
 
-    existingFriendship.status = 'accepted';
-    await existingFriendship.save({ transaction: t });
-
-    // Invalidate cache cho cả hai người dùng
-    // Xóa cache danh sách bạn bè của người gửi và người nhận
-    await redisHelpers.safeDel(`user:${existingFriendship.senderId}:friends`);
-    await redisHelpers.safeDel(`user:${existingFriendship.receiverId}:friends`);
-    // Xóa cache tìm kiếm của người gửi và người nhận
-    await redisHelpers.invalidatePattern(`search:users:${existingFriendship.senderId}:*`);
-    await redisHelpers.invalidatePattern(`search:users:${existingFriendship.receiverId}:*`);
-
-    return existingFriendship;
+  // Fetch user info
+  const sender = await User.findByPk(friendship.senderId, {
+    attributes: ['id', 'uuid', 'username', 'avatarUrl']
+  });
+  const receiver = await User.findByPk(friendship.receiverId, {
+    attributes: ['id', 'uuid', 'username', 'avatarUrl']
   });
 
-  // Lấy thông tin người gửi và người nhận sau khi transaction thành công
-  const sender = await User.findByPk(friendship.senderId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'] });
-  const receiver = await User.findByPk(friendship.receiverId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'] });
-
+  // Emit socket events
   const io = getIo();
   const friendshipUpdateData = {
     type: 'accepted',
     friendshipId: friendship.id,
     senderId: friendship.senderId,
     receiverId: friendship.receiverId,
-    friend: receiver, // Đối với sender, friend là receiver
     friendOfSender: receiver,
     friendOfReceiver: sender,
   };
 
-  // Emit trực tiếp cho người gửi và người nhận
-  io.to(`user_${friendship.senderId}`).emit('friendshipStatusUpdated', { ...friendshipUpdateData, friend: receiver });
-  io.to(`user_${friendship.receiverId}`).emit('friendshipStatusUpdated', { ...friendshipUpdateData, friend: sender });
+  safeSocketEmit(io, `user_${friendship.senderId}`, 'friendship:update', {
+    ...friendshipUpdateData,
+    friend: receiver
+  });
+  safeSocketEmit(io, `user_${friendship.receiverId}`, 'friendship:update', {
+    ...friendshipUpdateData,
+    friend: sender
+  });
 
-  // Publish lên Redis Pub/Sub
-  if (redisClient.status === 'ready') {
-    await redisClient.publish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, JSON.stringify(friendshipUpdateData));
+  // Publish to Redis
+  await safeRedisPublish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, friendshipUpdateData);
+
+  // Create notification
+  try {
+    const { title, body } = generateNotificationContent('friend_request_status', {
+      senderName: receiver.username,
+      status: 'accepted'
+    });
+    await createNotification({
+      userId: friendship.senderId,
+      type: 'friend_request_status',
+      title,
+      body,
+      link: `/profile/${receiver.uuid}`,
+      senderId: friendship.receiverId,
+      metadata: { friendshipId: friendship.id, status: 'accepted' }
+    });
+  } catch (notifError) {
+    console.error('[acceptFriendRequest] Failed to create notification:', notifError.message);
   }
-
-  // Tạo thông báo cho người gửi yêu cầu
-  const { title, body } = generateNotificationContent('friend_request_status', {
-    senderName: receiver.username,
-    status: 'accepted'
-  });
-  await createNotification({
-    userId: friendship.senderId,
-    type: 'friend_request_status',
-    title,
-    body,
-    link: `/profile/${receiver.uuid}`,
-    senderId: friendship.receiverId,
-    metadata: { friendshipId: friendship.id, status: 'accepted' }
-  });
 
   return friendship;
 };
@@ -456,39 +569,45 @@ const acceptFriendRequest = async (userId, inviteId) => {
  * @returns {Promise<Friendship>} Đối tượng Friendship đã cập nhật
  */
 const rejectFriendRequest = async (userId, inviteId) => {
-  // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
-  const friendship = await db.sequelize.transaction(async (t) => {
-    const existingFriendship = await Friendship.findOne({
-      where: {
-        id: inviteId,
-        receiverId: userId,
-        status: 'pending',
-      },
-      transaction: t,
+  let friendship;
+
+  try {
+    friendship = await db.sequelize.transaction(async (t) => {
+      const existingFriendship = await Friendship.findOne({
+        where: {
+          id: inviteId,
+          receiverId: userId,
+          status: 'pending',
+        },
+        transaction: t,
+      });
+
+      if (!existingFriendship) {
+        throw new Error('Lời mời kết bạn không tồn tại hoặc không thể từ chối.');
+      }
+
+      existingFriendship.status = 'rejected';
+      await existingFriendship.save({ transaction: t });
+
+      return existingFriendship;
     });
+  } catch (error) {
+    console.error('[rejectFriendRequest] Transaction failed:', error.message);
+    throw error;
+  }
 
-    if (!existingFriendship) {
-      throw new Error('Lời mời kết bạn không tồn tại hoặc không thể từ chối.');
-    }
+  // Invalidate caches AFTER successful transaction
+  await invalidateFriendCaches(friendship.senderId, friendship.receiverId);
 
-    existingFriendship.status = 'rejected';
-    await existingFriendship.save({ transaction: t });
-
-    // Invalidate cache cho người gửi và người nhận
-    // Xóa cache danh sách bạn bè của người gửi và người nhận
-    await redisHelpers.safeDel(`user:${existingFriendship.senderId}:friends`);
-    await redisHelpers.safeDel(`user:${existingFriendship.receiverId}:friends`);
-    // Xóa cache tìm kiếm của người gửi và người nhận
-    await redisHelpers.invalidatePattern(`search:users:${existingFriendship.senderId}:*`);
-    await redisHelpers.invalidatePattern(`search:users:${existingFriendship.receiverId}:*`);
-
-    return existingFriendship;
+  // Fetch user info
+  const sender = await User.findByPk(friendship.senderId, {
+    attributes: ['id', 'uuid', 'username', 'avatarUrl']
+  });
+  const receiver = await User.findByPk(friendship.receiverId, {
+    attributes: ['id', 'uuid', 'username', 'avatarUrl']
   });
 
-  // Lấy thông tin người gửi và người nhận sau khi transaction thành công
-  const sender = await User.findByPk(friendship.senderId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'] });
-  const receiver = await User.findByPk(friendship.receiverId, { attributes: ['id', 'uuid', 'username', 'avatarUrl'] });
-  
+  // Emit socket events
   const io = getIo();
   const friendshipUpdateData = {
     type: 'rejected',
@@ -497,31 +616,91 @@ const rejectFriendRequest = async (userId, inviteId) => {
     receiverId: friendship.receiverId,
   };
 
-  // Emit trực tiếp cho người gửi và người nhận
-  io.to(`user_${friendship.senderId}`).emit('friendshipStatusUpdated', friendshipUpdateData);
-  io.to(`user_${friendship.receiverId}`).emit('friendshipStatusUpdated', friendshipUpdateData);
+  safeSocketEmit(io, `user_${friendship.senderId}`, 'friendship:update', friendshipUpdateData);
+  safeSocketEmit(io, `user_${friendship.receiverId}`, 'friendship:update', friendshipUpdateData);
 
-  // Publish lên Redis Pub/Sub
-  if (redisClient.status === 'ready') {
-    await redisClient.publish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, JSON.stringify(friendshipUpdateData));
+  // Publish to Redis
+  await safeRedisPublish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, friendshipUpdateData);
+
+  // Optional: Create notification (consider UX - many apps don't notify rejection)
+  try {
+    const { title, body } = generateNotificationContent('friend_request_status', {
+      senderName: receiver.username,
+      status: 'rejected'
+    });
+    await createNotification({
+      userId: friendship.senderId,
+      type: 'friend_request_status',
+      title,
+      body,
+      link: `/profile/${receiver.uuid}`,
+      senderId: friendship.receiverId,
+      metadata: { friendshipId: friendship.id, status: 'rejected' }
+    });
+  } catch (notifError) {
+    console.error('[rejectFriendRequest] Failed to create notification:', notifError.message);
   }
 
-  // Tạo thông báo cho người gửi yêu cầu
-  const { title, body } = generateNotificationContent('friend_request_status', {
-    senderName: receiver.username,
-    status: 'rejected'
-  });
-  await createNotification({
-    userId: friendship.senderId,
-    type: 'friend_request_status',
-    title,
-    body,
-    link: `/profile/${receiver.uuid}`,
-    senderId: friendship.receiverId,
-    metadata: { friendshipId: friendship.id, status: 'rejected' }
-  });
-
   return friendship;
+};
+
+/**
+ * @desc Hủy lời mời kết bạn đã gửi
+ * @param {number} userId - ID của người dùng (người hủy)
+ * @param {number} requestId - ID của lời mời kết bạn (friendshipId)
+ * @returns {Promise<void>}
+ */
+const cancelFriendRequest = async (userId, requestId) => {
+  let friendship;
+
+  try {
+    friendship = await db.sequelize.transaction(async (t) => {
+      const existingFriendship = await Friendship.findOne({
+        where: {
+          id: requestId,
+          senderId: userId,
+          status: 'pending',
+        },
+        transaction: t,
+      });
+
+      if (!existingFriendship) {
+        throw new Error('Lời mời kết bạn không tồn tại hoặc không thể hủy.');
+      }
+
+      await existingFriendship.destroy({ transaction: t });
+
+      return existingFriendship;
+    });
+  } catch (error) {
+    console.error('[cancelFriendRequest] Transaction failed:', error.message);
+    throw error;
+  }
+
+  // Invalidate caches AFTER successful transaction
+  await invalidateFriendCaches(friendship.senderId, friendship.receiverId);
+
+  // Delete notification
+  try {
+    await deleteNotificationByFriendship(friendship.id, friendship.receiverId);
+  } catch (error) {
+    console.error('[cancelFriendRequest] Failed to delete notification:', error.message);
+  }
+
+  // Emit socket events
+  const io = getIo();
+  const friendshipUpdateData = {
+    type: 'cancelled',
+    friendshipId: friendship.id,
+    senderId: friendship.senderId,
+    receiverId: friendship.receiverId,
+  };
+
+  safeSocketEmit(io, `user_${friendship.senderId}`, 'friendship:update', friendshipUpdateData);
+  safeSocketEmit(io, `user_${friendship.receiverId}`, 'friendship:update', friendshipUpdateData);
+
+  // Publish to Redis
+  await safeRedisPublish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, friendshipUpdateData);
 };
 
 /**
@@ -531,56 +710,72 @@ const rejectFriendRequest = async (userId, inviteId) => {
  * @returns {Promise<void>}
  */
 const removeFriend = async (userId, friendId) => {
-  // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
-  const friendship = await db.sequelize.transaction(async (t) => {
-    const existingFriendship = await Friendship.findOne({
-      where: {
-        [Op.or]: [
-          { senderId: userId, receiverId: friendId },
-          { senderId: friendId, receiverId: userId },
-        ],
-        status: 'accepted',
-      },
-      transaction: t,
+  let friendship;
+
+  try {
+    friendship = await db.sequelize.transaction(async (t) => {
+      const existingFriendship = await Friendship.findOne({
+        where: {
+          [Op.or]: [
+            { senderId: userId, receiverId: friendId },
+            { senderId: friendId, receiverId: userId },
+          ],
+          status: 'accepted',
+        },
+        transaction: t,
+      });
+
+      if (!existingFriendship) {
+        throw new Error('Không tìm thấy tình bạn hoặc không thể hủy kết bạn.');
+      }
+
+      await existingFriendship.destroy({ transaction: t });
+
+      // Cleanup related notifications
+      try {
+        await Notification.destroy({
+          where: {
+            type: { [Op.in]: ['friend_request', 'friend_request_status'] },
+            [Op.or]: [
+              { userId: userId, senderId: friendId },
+              { userId: friendId, senderId: userId }
+            ]
+          },
+          transaction: t
+        });
+      } catch (notifError) {
+        console.error('[removeFriend] Failed to cleanup notifications:', notifError.message);
+        // Don't throw - notification cleanup is not critical
+      }
+
+      return existingFriendship;
     });
+  } catch (error) {
+    console.error('[removeFriend] Transaction failed:', error.message);
+    throw error;
+  }
 
-    if (!existingFriendship) {
-      throw new Error('Không tìm thấy tình bạn hoặc không thể hủy kết bạn.');
-    }
+  // Invalidate caches AFTER successful transaction
+  await invalidateFriendCaches(userId, friendId);
 
-    await existingFriendship.destroy({ transaction: t });
-
-    // Invalidate cache cho cả hai người dùng
-    // Xóa cache danh sách bạn bè của người dùng và người bạn
-    await redisHelpers.safeDel(`user:${userId}:friends`);
-    await redisHelpers.safeDel(`user:${friendId}:friends`);
-    // Xóa cache tìm kiếm của người dùng và người bạn
-    await redisHelpers.invalidatePattern(`search:users:${userId}:*`);
-    await redisHelpers.invalidatePattern(`search:users:${friendId}:*`);
-    
-    return existingFriendship;
-  });
-
+  // Emit socket events
   const io = getIo();
   const friendshipUpdateData = {
     type: 'removed',
     friendshipId: friendship.id,
-    friendId: friendId, // Người bị hủy kết bạn
-    userId: userId, // Người thực hiện hành động hủy
+    friendId: friendId,
+    userId: userId,
   };
 
-  // Emit trực tiếp cho cả hai người dùng
-  io.to(`user_${userId}`).emit('friendshipStatusUpdated', friendshipUpdateData);
-  io.to(`user_${friendId}`).emit('friendshipStatusUpdated', friendshipUpdateData);
+  safeSocketEmit(io, `user_${userId}`, 'friendship:update', friendshipUpdateData);
+  safeSocketEmit(io, `user_${friendId}`, 'friendship:update', friendshipUpdateData);
 
-  // Publish lên Redis Pub/Sub
-  if (redisClient.status === 'ready') {
-    await redisClient.publish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, JSON.stringify(friendshipUpdateData));
-  }
+  // Publish to Redis
+  await safeRedisPublish(REDIS_CHANNELS.FRIENDSHIP_UPDATE, friendshipUpdateData);
 };
 
 /**
- * @desc Search users by username, email or uuid with optimized performance
+ * @desc Search users by username or uuid with optimized performance
  * @param {string} query - Search query string
  * @param {number} currentUserId - Current user ID to exclude from results
  * @param {object} options - Additional options (limit, offset)
@@ -598,7 +793,7 @@ const searchUsers = async (query, currentUserId, options = {}) => {
 
   // Sanitize and trim query
   const sanitizedQuery = query.trim();
-  
+
   if (sanitizedQuery.length === 0) {
     return [];
   }
@@ -607,10 +802,10 @@ const searchUsers = async (query, currentUserId, options = {}) => {
     throw new Error('Search query too long (max 100 characters)');
   }
 
-  const limit = Math.min(options.limit || 10, 50); // Max 50 results
+  const limit = Math.min(options.limit || 10, 50);
   const offset = options.offset || 0;
 
-  // Check Redis cache first
+  // Check cache
   const cacheKey = `search:users:${currentUserId}:${sanitizedQuery}:${limit}:${offset}`;
   const cached = await redisHelpers.safeGet(cacheKey);
   if (cached) {
@@ -618,92 +813,77 @@ const searchUsers = async (query, currentUserId, options = {}) => {
   }
 
   try {
-    // Check if query is a valid UUID format
+    // Check if query is UUID
     const isUuidQuery = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitizedQuery);
 
-    // Build optimized where clause
+    // Build where clause (username and UUID only - no email for privacy)
     const whereCondition = {
       id: { [Op.ne]: currentUserId },
-      status: 'active', // Only search active users
+      status: 'active',
       [Op.or]: isUuidQuery
-        ? [{ uuid: sanitizedQuery }] // Exact UUID match
-        : [
-            { username: { [Op.like]: `%${sanitizedQuery}%` } },
-            { email: { [Op.like]: `%${sanitizedQuery}%` } },
-          ],
+        ? [{ uuid: sanitizedQuery }]
+        : [{ username: { [Op.like]: `%${sanitizedQuery}%` } }],
     };
 
-    // SOLUTION 1: Use separate query with JOIN (recommended for better performance)
+    // Step 1: Get users matching search
     const users = await User.findAll({
       where: whereCondition,
       attributes: [
-        'id',
-        'uuid',
-        'username',
-        'email',
-        'avatarUrl',
-        'online',
-        'lastOnline',
-        'showOnlineStatus',
-      ],
-      include: [
-        {
-          model: Friendship,
-          as: 'sentFriendRequests',
-          required: false,
-          where: { receiverId: currentUserId },
-          attributes: ['status'],
-        },
-        {
-          model: Friendship,
-          as: 'receivedFriendRequests',
-          required: false,
-          where: { senderId: currentUserId },
-          attributes: ['status'],
-        },
+        'id', 'uuid', 'username', 'avatarUrl',
+        'online', 'lastOnline', 'showOnlineStatus'
       ],
       limit,
       offset,
-      raw: false,
-      subQuery: false, // Optimize query execution
     });
 
-    // Transform results to include friendship status
+    if (users.length === 0) {
+      await redisHelpers.safeSet(cacheKey, [], 120);
+      return [];
+    }
+
+    // Step 2: Get friendship statuses separately for better performance
+    const userIds = users.map(u => u.id);
+    const friendships = await Friendship.findAll({
+      where: {
+        [Op.or]: [
+          { senderId: currentUserId, receiverId: { [Op.in]: userIds } },
+          { receiverId: currentUserId, senderId: { [Op.in]: userIds } },
+        ],
+      },
+      attributes: ['senderId', 'receiverId', 'status'],
+      raw: true,
+    });
+
+    // Step 3: Build friendship status map
+    const friendshipMap = new Map();
+    for (const fs of friendships) {
+      const otherUserId = fs.senderId === currentUserId ? fs.receiverId : fs.senderId;
+      friendshipMap.set(otherUserId, fs.status);
+    }
+
+    // Step 4: Transform results
     const results = users.map(user => {
       const userData = user.get({ plain: true });
-      
-      // Determine friendship status from relationships
-      let friendshipStatus = 'none';
-      
-      if (userData.sentFriendRequests?.length > 0) {
-        friendshipStatus = userData.sentFriendRequests[0].status;
-      } else if (userData.receivedFriendRequests?.length > 0) {
-        friendshipStatus = userData.receivedFriendRequests[0].status;
-      }
-
-      // Clean up response
-      delete userData.sentFriendRequests;
-      delete userData.receivedFriendRequests;
-
       const isHidden = userData.showOnlineStatus === false;
-      delete userData.showOnlineStatus;
 
       return {
-        ...userData,
+        id: userData.id,
+        uuid: userData.uuid,
+        username: userData.username,
+        avatarUrl: userData.avatarUrl,
         online: isHidden ? false : userData.online,
         lastOnline: isHidden ? null : userData.lastOnline,
         hidden: isHidden,
-        friendshipStatus,
+        friendshipStatus: friendshipMap.get(userData.id) || 'none',
       };
     });
 
-    // Cache results for 2 minutes
+    // Cache for 2 minutes
     await redisHelpers.safeSet(cacheKey, results, 120);
 
     return results;
-
   } catch (error) {
-    console.error('Error in searchUsers:', error);
+    console.error('[searchUsers] Error:', error.message);
     throw new Error('Failed to search users');
   }
 };
@@ -715,6 +895,7 @@ export {
   getSentFriendRequests,
   acceptFriendRequest,
   rejectFriendRequest,
+  cancelFriendRequest,
   removeFriend,
   searchUsers,
 };

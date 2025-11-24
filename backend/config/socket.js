@@ -14,6 +14,12 @@ import {
   touchConnection,
   pruneStaleConnections
 } from '../services/presence.service.js';
+import {
+  registerWatchPartyHandlers,
+  setupWatchPartyRedisPubSub,
+  cleanupWatchParty,
+  WATCH_PARTY_CHANNELS
+} from '../sockets/watchParty.socket.js';
 
 const { User, Friendship } = db;
 
@@ -62,6 +68,7 @@ export const REDIS_CHANNELS = {
   COMMENT: 'comment:update',
   FRIEND_REQUEST: 'friend:request',
   FRIENDSHIP_UPDATE: 'friendship:update',
+  ...WATCH_PARTY_CHANNELS,
 };
 
 // ============================================================================
@@ -388,7 +395,7 @@ const handleFriendshipUpdate = async (data) => {
 /**
  * Initialize Socket.IO with improved configuration
  */
-export const initSocket = (httpServer) => {
+export const initSocket = async (httpServer) => {
   ioInstance = new Server(httpServer, {
     cors: {
       origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -560,9 +567,15 @@ export const initSocket = (httpServer) => {
     socket.on('error', (error) => {
       console.error(`❌ Socket error for user ${userId}:`, error);
     });
+
+    // ==================== WATCH PARTY HANDLERS ====================
+    registerWatchPartyHandlers(socket);
   });
 
   setupRedisSubscriptions();
+
+  // Setup Watch Party Redis Pub/Sub
+  await setupWatchPartyRedisPubSub(redisPoolManager);
 
   // ============================================================================
   // Cleanup interval for stale connections
@@ -682,6 +695,9 @@ export const shutdownSocket = async () => {
 
   batchEmitter.flush();
   batchEmitter.cleanup();
+
+  // Cleanup Watch Party resources
+  await cleanupWatchParty();
 
   if (redisSubscriber) {
     try {

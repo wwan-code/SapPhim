@@ -4,7 +4,7 @@ import CommentItem from './CommentItem';
 import CommentSkeleton from './CommentSkeleton';
 import CommentError from './CommentError';
 import { useReplies } from '@/hooks/useCommentQueries';
-import useCommentStore from '@/stores/useCommentStore';
+import useCommentStore from '@/hooks/stores/useCommentStore';
 import classNames from '@/utils/classNames';
 
 /**
@@ -103,7 +103,7 @@ const RepliesLoader = ({
         isError,
         error,
         refetch,
-    } = useReplies(parentId, 'latest'); 
+    } = useReplies(parentId, 'latest');
 
     const allReplies = data?.pages.flatMap((page) => page.data) || [];
 

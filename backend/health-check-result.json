@@ -1,0 +1,41 @@
+﻿{
+    "timestamp":  "2025-11-21T23:47:07.608Z",
+    "status":  "ok",
+    "database":  {
+                     "active":  0,
+                     "idle":  2,
+                     "size":  2
+                 },
+    "redis":  {
+                  "main":  {
+                               "active":  0,
+                               "idle":  2,
+                               "size":  2,
+                               "pending":  0
+                           },
+                  "cache":  {
+                                "active":  0,
+                                "idle":  3,
+                                "size":  3,
+                                "pending":  0
+                            },
+                  "pubsub":  {
+                                 "active":  1,
+                                 "idle":  0,
+                                 "size":  1,
+                                 "pending":  0
+                             }
+              },
+    "socketIO":  {
+                     "connected":  0,
+                     "polling":  0,
+                     "websocket":  0
+                 },
+    "system":  {
+                   "rss":  "97 MB",
+                   "heapTotal":  "48 MB",
+                   "heapUsed":  "45 MB",
+                   "external":  "3 MB",
+                   "uptime":  554.2890326
+               }
+}

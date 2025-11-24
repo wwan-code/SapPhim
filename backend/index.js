@@ -41,6 +41,7 @@ import notificationRoutes from './routes/notification.routes.js';
 import commentRoutes from './routes/comment.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import settingRoutes from './routes/setting.routes.js';
+import watchPartyRoutes from './routes/watchParty.routes.js';
 
 dotenv.config();
 
@@ -201,6 +202,7 @@ app.use('/api', episodeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/watch-party', watchPartyRoutes);
 
 // ==================== 404 HANDLER ====================
 app.use((req, res, next) => {

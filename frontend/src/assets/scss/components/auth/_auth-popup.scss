@@ -6,6 +6,7 @@
   --auth-popup-max-width: 95vw;
   --auth-popup-border-radius: var(--w-border-radius-xl);
 }
+
 @include floating-element-animations;
 
 .auth-popup-overlay {
@@ -35,12 +36,10 @@
 }
 
 .auth-popup {
-  @include liquid-glass-complete(
-    $opacity: var(--w-glass-opacity-heavy),
+  @include liquid-glass-complete($opacity: var(--w-glass-opacity-heavy),
     $blur: var(--w-blur-lg),
     $depth: 'elevated',
-    $add-highlight: false
-  );
+    $add-highlight: false);
   width: var(--auth-popup-width);
   max-width: var(--auth-popup-max-width);
   border-radius: var(--auth-popup-border-radius);
@@ -65,7 +64,7 @@
 .auth-popup__content-wrapper {
   padding: var(--w-spacing-md) var(--w-spacing-lg);
   overflow-y: auto;
-  @include sidebar-scroll-style; 
+  @include sidebar-scroll-style;
 }
 
 .auth-popup__close-btn {
@@ -123,9 +122,11 @@
   &[data-content-state='revealing'] {
     animation: contentFadeIn 230ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
+
   &[data-content-state='fading'] {
     animation: contentFadeOut 120ms ease-out forwards;
   }
+
   &[data-content-state='visible'] {
     opacity: 1;
     transform: translateY(0);
@@ -239,4 +240,3 @@
   gap: var(--w-spacing-xs);
   border-radius: var(--w-border-radius-md);
 }
-

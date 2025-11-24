@@ -4,6 +4,7 @@ import { createNotification } from './notification.service.js';
 import { generateNotificationContent } from '../utils/notification.utils.js';
 import { getIo } from '../config/socket.js';
 import { classifyCommentWithAI } from '../utils/ai.utils.js';
+import { addNotificationJob } from '../queues/notificationQueue.js';
 
 const { Comment, User, Movie, Episode, Role, sequelize } = db;
 
@@ -341,10 +342,10 @@ const processCommentData = (comment, userId = null, currentDepth = 0) => {
     } else {
         // Đếm replies thực tế từ mảng replies được load
         const actualReplies = commentData.replies || [];
-        const visibleReplies = actualReplies.filter(reply => 
+        const visibleReplies = actualReplies.filter(reply =>
             reply.isApproved !== false && reply.isHidden !== true
         );
-        
+
         // Sử dụng số lượng thực tế thay vì subquery count
         commentData.repliesCount = visibleReplies.length;
         commentData.hasReplies = visibleReplies.length > 0;
@@ -371,10 +372,10 @@ const processCommentData = (comment, userId = null, currentDepth = 0) => {
  */
 const processRepliesWithEpisodeInfo = async (replies, userId, episodeMap, currentDepth = 1) => {
     if (!Array.isArray(replies) || replies.length === 0) return [];
-    
+
     return Promise.all(replies.map(async (reply) => {
         const replyData = processCommentData(reply, userId, currentDepth);
-        
+
         // Thêm episode info cho reply nếu cần
         if (replyData.contentType === CONTENT_TYPES.EPISODE) {
             const episodeNumber = episodeMap.get(replyData.contentId);
@@ -414,17 +415,26 @@ const processRepliesWithEpisodeInfo = async (replies, userId, episodeMap, curren
  */
 const processRepliesData = async (replies, userId, contentId, contentType, currentDepth = 1) => {
     if (!Array.isArray(replies) || replies.length === 0) return [];
-    
+
+    // Pre-fetch episode info if needed
+    let episodeInfo = null;
+    if (contentType === CONTENT_TYPES.EPISODE) {
+        const episode = await Episode.findByPk(contentId, { attributes: ['episodeNumber'] });
+        if (episode) {
+            episodeInfo = {
+                episodeNumber: episode.episodeNumber,
+                episodeTitle: `Tập ${episode.episodeNumber}`
+            };
+        }
+    }
+
     return Promise.all(replies.map(async (reply) => {
         const replyData = processCommentData(reply, userId, currentDepth);
 
         // Thêm episode number nếu cần thiết
-        if (contentType === CONTENT_TYPES.EPISODE) {
-            const episode = await Episode.findByPk(contentId, { attributes: ['episodeNumber'] });
-            if (episode) {
-                replyData.episodeNumber = episode.episodeNumber;
-                replyData.episodeTitle = `Tập ${episode.episodeNumber}`;
-            }
+        if (episodeInfo) {
+            replyData.episodeNumber = episodeInfo.episodeNumber;
+            replyData.episodeTitle = episodeInfo.episodeTitle;
         }
 
         // Xử lý replies nếu có và chưa đạt độ sâu tối đa
@@ -504,73 +514,7 @@ const createCommentsIncludeArray = () => {
  * @param {string} params.commentText - Nội dung comment
  * @returns {Promise<void>}
  */
-const sendReplyNotification = async ({
-    parentCommentUserId,
-    currentUserId,
-    newCommentId,
-    parentCommentId,
-    contentType,
-    contentId,
-    commentText
-}) => {
-    // Chỉ gửi thông báo nếu người reply khác với tác giả comment gốc
-    if (parentCommentUserId === currentUserId) {
-        return;
-    }
-
-    const sender = await User.findByPk(currentUserId);
-    if (!sender) {
-        return;
-    }
-
-    // Build proper notification link based on content type
-    let notificationLink = '';
-    try {
-        if (contentType === CONTENT_TYPES.MOVIE) {
-            const movie = await Movie.findByPk(contentId, { attributes: ['slug'] });
-            if (movie) {
-                notificationLink = `/movie/${movie.slug}?commentId=${newCommentId}`;
-            }
-        } else if (contentType === CONTENT_TYPES.EPISODE) {
-            const episode = await Episode.findByPk(contentId, {
-                attributes: ['episodeNumber', 'movieId'],
-                include: [{
-                    model: Movie,
-                    as: 'movie',
-                    attributes: ['slug']
-                }]
-            });
-            if (episode && episode.movie) {
-                notificationLink = `/watch/${episode.movie.slug}/episode/${episode.episodeNumber}?commentId=${newCommentId}`;
-            }
-        }
-    } catch (linkError) {
-        console.error('Failed to build notification link:', linkError);
-        // Fallback to basic link
-        notificationLink = `/comments/${contentType}/${contentId}?commentId=${newCommentId}`;
-    }
-
-    const preview = commentText.length > 50 ? `${commentText.substring(0, 50)}...` : commentText;
-    const { title, body } = generateNotificationContent('new_comment', {
-        senderName: sender.username,
-        commentPreview: preview,
-    });
-
-    await createNotification({
-        userId: parentCommentUserId,
-        type: NOTIFICATION_TYPES.NEW_COMMENT,
-        title,
-        body,
-        link: notificationLink,
-        senderId: currentUserId,
-        metadata: {
-            commentId: newCommentId,
-            parentId: parentCommentId,
-            contentId: contentId,
-            contentType: contentType,
-        }
-    });
-};
+// sendReplyNotification removed - moved to worker
 
 /**
  * Gửi thông báo like cho tác giả comment
@@ -580,64 +524,7 @@ const sendReplyNotification = async ({
  * @param {Object} params.comment - Comment object
  * @returns {Promise<void>}
  */
-const sendLikeNotification = async ({ commentUserId, currentUserId, comment }) => {
-    // Chỉ gửi thông báo nếu người like khác với tác giả comment
-    if (commentUserId === currentUserId) {
-        return;
-    }
-
-    const sender = await User.findByPk(currentUserId);
-    if (!sender) {
-        return;
-    }
-
-    // Build proper notification link based on content type
-    let notificationLink = '';
-    try {
-        if (comment.contentType === CONTENT_TYPES.MOVIE) {
-            const movie = await Movie.findByPk(comment.contentId, { attributes: ['slug'] });
-            if (movie) {
-                notificationLink = `/movie/${movie.slug}?commentId=${comment.id}`;
-            }
-        } else if (comment.contentType === CONTENT_TYPES.EPISODE) {
-            const episode = await Episode.findByPk(comment.contentId, {
-                attributes: ['episodeNumber', 'movieId'],
-                include: [{
-                    model: Movie,
-                    as: 'movie',
-                    attributes: ['slug']
-                }]
-            });
-            if (episode && episode.movie) {
-                notificationLink = `/watch/${episode.movie.slug}/episode/${episode.episodeNumber}?commentId=${comment.id}`;
-            }
-        }
-    } catch (linkError) {
-        console.error('Failed to build notification link:', linkError);
-        // Fallback to basic link
-        notificationLink = `/comments/${comment.contentType}/${comment.contentId}?commentId=${comment.id}`;
-    }
-
-    const preview = comment.text.length > 50 ? `${comment.text.substring(0, 50)}...` : comment.text;
-    const { title, body } = generateNotificationContent('like_comment', {
-        senderName: sender.username,
-        commentPreview: preview,
-    });
-
-    await createNotification({
-        userId: commentUserId,
-        type: NOTIFICATION_TYPES.LIKE_COMMENT,
-        title,
-        body,
-        link: notificationLink,
-        senderId: currentUserId,
-        metadata: {
-            commentId: comment.id,
-            contentId: comment.contentId,
-            contentType: comment.contentType,
-        }
-    });
-};
+// sendLikeNotification removed - moved to worker
 
 /**
  * Gửi thông báo report cho tất cả admin
@@ -646,51 +533,7 @@ const sendLikeNotification = async ({ commentUserId, currentUserId, comment }) =
  * @param {Object} params.comment - Comment object bị report
  * @returns {Promise<void>}
  */
-const sendReportNotification = async ({ reporterId, comment }) => {
-    const admins = await User.findAll({
-        include: [{
-            model: Role, // FIX: Sử dụng Role thay vì db.Role
-            as: 'roles',
-            where: { name: 'admin' },
-            through: { attributes: [] }
-        }]
-    });
-
-    if (admins.length === 0) {
-        return;
-    }
-
-    const sender = await User.findByPk(reporterId);
-    if (!sender) {
-        return;
-    }
-
-    const preview = comment.text.length > 50 ? `${comment.text.substring(0, 50)}...` : comment.text;
-    const { title, body } = generateNotificationContent('comment_report', {
-        senderName: sender.username,
-        commentPreview: preview,
-    });
-    const notificationLink = `/admin/comments/${comment.id}`;
-
-    // Gửi thông báo đến tất cả admin
-    const notificationPromises = admins.map(admin =>
-        createNotification({
-            userId: admin.id,
-            type: NOTIFICATION_TYPES.COMMENT_REPORT,
-            title,
-            body,
-            link: notificationLink,
-            senderId: reporterId,
-            metadata: {
-                commentId: comment.id,
-                contentId: comment.contentId,
-                contentType: comment.contentType,
-            }
-        })
-    );
-
-    await Promise.all(notificationPromises);
-};
+// sendReportNotification removed - moved to worker
 
 /**
  * Gửi thông báo mention cho người dùng được nhắc đến trong bình luận.
@@ -702,108 +545,7 @@ const sendReportNotification = async ({ reporterId, comment }) => {
  * @param {number} params.contentId - ID của nội dung.
  * @returns {Promise<void>}
  */
-const sendMentionNotifications = async ({ commentText, senderId, commentId, contentType, contentId }) => {
-    console.log("Debug sendMentionNotifications: ", commentText, senderId, commentId, contentType, contentId);
-    
-    // Regex cải tiến để tìm tất cả các mention link trong nội dung bình luận
-    // Hỗ trợ tên có dấu cách, ký tự Unicode (tiếng Việt), và các ký tự đặc biệt
-    const mentionRegex = /\[@([^\]]+)\]\(\/profile\/([a-f0-9-]+)\)/g;
-    let match;
-    const mentionedUserUuids = new Set();
-
-    while ((match = mentionRegex.exec(commentText)) !== null) {
-        mentionedUserUuids.add(match[2]); // Lấy UUID từ nhóm thứ hai của regex (vì giờ có 2 nhóm capture)
-    }
-
-    console.log("Debug mentionedUserUuids: ", mentionedUserUuids);
-
-    if (mentionedUserUuids.size === 0) {
-        return; // Không có mention nào để xử lý
-    }
-
-    // Lấy thông tin người gửi để tạo thông báo
-    const sender = await User.findByPk(senderId, { attributes: ['id', 'username'] });
-    if (!sender) {
-        console.error(`sendMentionNotifications: Không tìm thấy người gửi với ID ${senderId}`);
-        return;
-    }
-    console.log("Debug sender: ", sender);
-    // Chuyển đổi UUID thành User ID và lọc bỏ người gửi
-    const mentionedUsers = await User.findAll({
-        where: {
-            uuid: { [Op.in]: Array.from(mentionedUserUuids) },
-            id: { [Op.ne]: senderId } // Không gửi thông báo cho chính người mention
-        },
-        attributes: ['id', 'username']
-    });
-
-    if (mentionedUsers.length === 0) {
-        return; // Không có người dùng hợp lệ nào để gửi thông báo
-    }
-    console.log("Debug mentionedUsers: ", mentionedUsers);
-    // Helper: strip markdown profile links to @username for notification display
-    const stripMentionLinksForNotification = (text) => {
-        if (!text) return '';
-        // Regex cải tiến để hỗ trợ tên có dấu cách và ký tự Unicode
-        return text.replace(/\[@([^\]]+)\]\(\/profile\/[a-f0-9-]+\)/gi, '@$1');
-    };
-    console.log("Debug: ", stripMentionLinksForNotification(commentText));
-
-    const cleanedCommentText = stripMentionLinksForNotification(commentText);
-    const preview = cleanedCommentText.length > 50 ? `${cleanedCommentText.substring(0, 50)}...` : cleanedCommentText;
-    
-    // Build proper notification link based on content type
-    let notificationLink = '';
-    try {
-        if (contentType === CONTENT_TYPES.MOVIE) {
-            const movie = await Movie.findByPk(contentId, { attributes: ['slug'] });
-            if (movie) {
-                notificationLink = `/movie/${movie.slug}?commentId=${commentId}`;
-            }
-        } else if (contentType === CONTENT_TYPES.EPISODE) {
-            const episode = await Episode.findByPk(contentId, {
-                attributes: ['episodeNumber', 'movieId'],
-                include: [{
-                    model: Movie,
-                    as: 'movie',
-                    attributes: ['slug']
-                }]
-            });
-            if (episode && episode.movie) {
-                notificationLink = `/watch/${episode.movie.slug}/episode/${episode.episodeNumber}?commentId=${commentId}`;
-            }
-        }
-    } catch (linkError) {
-        console.error('Failed to build notification link:', linkError);
-        // Fallback to basic link
-        notificationLink = `/comments/${contentType}/${contentId}?commentId=${commentId}`;
-    }
-
-    const notificationPromises = mentionedUsers.map(async (user) => {
-        const { title, body } = generateNotificationContent(NOTIFICATION_TYPES.USER_MENTION, {
-            senderName: sender.username,
-            commentPreview: preview,
-        });
-        console.log("Debug: ", title, body);
-
-        return createNotification({
-            userId: user.id,
-            type: NOTIFICATION_TYPES.USER_MENTION,
-            title,
-            body,
-            link: notificationLink,
-            senderId: senderId,
-            metadata: {
-                commentId: commentId,
-                contentId: contentId,
-                contentType: contentType,
-                mentionedUserId: user.id,
-            }
-        });
-    });
-
-    await Promise.all(notificationPromises);
-};
+// sendMentionNotifications removed - moved to worker
 
 /**
  * Lọc bỏ các mention [@username](/profile/:uuid) khỏi nội dung bình luận.
@@ -878,39 +620,31 @@ const createComment = async (userId, commentData) => {
 
         console.log("Debug createdCommentWithUser: ", createdCommentWithUser);
 
-        // Gửi thông báo cho tác giả comment cha nếu đây là reply
+        // Gửi thông báo cho người được reply (nếu có)
         if (parentId && parentComment) {
-            try {
-                await sendReplyNotification({
-                    parentCommentUserId: parentComment.userId,
-                    currentUserId: userId,
-                    newCommentId: newComment.id,
-                    parentCommentId: parentId,
-                    contentType,
-                    contentId,
-                    commentText: text
-                });
-            } catch (notificationError) {
-                // Log lỗi notification nhưng không rollback transaction vì comment đã được tạo thành công
-                console.error('Failed to send reply notification:', notificationError);
-            }
+            // Không await để tránh block response
+            addNotificationJob('REPLY', {
+                parentCommentUserId: parentComment.userId,
+                currentUserId: userId,
+                newCommentId: createdCommentWithUser.id,
+                parentCommentId: parentId,
+                contentType,
+                contentId,
+                commentText: createdCommentWithUser.text
+            }).catch(err => console.error('Failed to queue reply notification:', err));
         }
 
         console.log("Debug parentId: ", parentId);
         console.log("Debug parentComment: ", parentComment);
 
-        // Gửi thông báo mention cho người dùng được nhắc đến
-        try {
-            await sendMentionNotifications({
-                commentText: text,
-                senderId: userId,
-                commentId: newComment.id,
-                contentType,
-                contentId,
-            });
-        } catch (mentionNotificationError) {
-            console.error('Failed to send mention notifications:', mentionNotificationError);
-        }
+        // Gửi thông báo mention
+        addNotificationJob('MENTION', {
+            commentText: createdCommentWithUser.text,
+            senderId: userId,
+            commentId: createdCommentWithUser.id,
+            contentType,
+            contentId
+        }).catch(err => console.error('Failed to queue mention notification:', err));
 
         // Emit socket event for real-time updates
         try {
@@ -1075,7 +809,7 @@ const getComments = async (contentType, contentId, query = {}) => {
 
             return commentData;
         }));
-            
+
         return {
             data: processedComments,
             meta: {
@@ -1117,7 +851,7 @@ const getReplies = async (parentId, query = {}) => {
         const parentComment = await Comment.findByPk(parsedParentId, {
             attributes: ['id', 'parentId', 'contentId', 'contentType', 'isApproved', 'isHidden']
         });
-        
+
         if (!parentComment) {
             throw new Error('Bình luận cha không tồn tại.');
         }
@@ -1145,7 +879,7 @@ const getReplies = async (parentId, query = {}) => {
         const whereCondition = createBasicWhereCondition({
             parentId: parsedParentId
         });
-        
+
         // Sử dụng transaction để đảm bảo tính nhất quán
         const result = await sequelize.transaction(async (t) => {
             const totalReplies = await Comment.count({
@@ -1206,7 +940,7 @@ const getReplies = async (parentId, query = {}) => {
         const processedReplies = await Promise.all(result.rows.map(async (reply) => {
             const currentDepth = parentDepth + 1;
             const replyData = processCommentData(reply, userId, currentDepth);
-            
+
             // Thêm episode number nếu là episode comment
             if (replyData.contentType === CONTENT_TYPES.EPISODE) {
                 try {
@@ -1220,7 +954,7 @@ const getReplies = async (parentId, query = {}) => {
                             });
                         }
                     }
-                    
+
                     const episodeInfo = episodeCache.get(replyData.contentId);
                     if (episodeInfo) {
                         replyData.episodeNumber = episodeInfo.episodeNumber;
@@ -1290,7 +1024,7 @@ const getCommentsForMovieWithEpisodes = async (movieId, query = {}) => {
         // Tạo map episode ID -> episode number với error handling
         let episodeMap;
         let episodeIds = [];
-        
+
         try {
             episodeMap = await createEpisodeMap(parsedMovieId);
             episodeIds = Array.from(episodeMap.keys());
@@ -1569,18 +1303,16 @@ const likeComment = async (commentId, userId) => {
         // Cập nhật likes trong transaction
         await comment.update({ likes }, { transaction });
 
-        // Gửi thông báo cho tác giả comment (ngoài transaction để tránh rollback)
-        if (shouldSendNotification) {
-            try {
-                await sendLikeNotification({
-                    commentUserId: comment.userId,
-                    currentUserId: userId,
-                    comment
-                });
-            } catch (notificationError) {
-                // Log lỗi notification nhưng không rollback transaction vì like đã thành công
-                console.error('Failed to send like notification:', notificationError);
-            }
+        // Gửi thông báo nếu là like (không phải unlike)
+        if (userIndex === -1) {
+            addNotificationJob('LIKE', {
+                commentUserId: comment.userId,
+                currentUserId: userId,
+                commentId: comment.id,
+                contentId: comment.contentId,
+                contentType: comment.contentType,
+                commentText: comment.text
+            }).catch(err => console.error('Failed to queue like notification:', err));
         }
 
         // Lấy comment đã cập nhật với thông tin user
@@ -1647,15 +1379,14 @@ const reportComment = async (commentId, userId) => {
 
         // Gửi thông báo cho admin (ngoài transaction để tránh rollback)
         if (shouldSendNotification) {
-            try {
-                await sendReportNotification({
-                    reporterId: userId,
-                    comment
-                });
-            } catch (notificationError) {
-                // Log lỗi notification nhưng không rollback transaction vì report đã thành công
-                console.error('Failed to send report notification:', notificationError);
-            }
+            // Gửi thông báo cho admin
+            addNotificationJob('REPORT', {
+                reporterId: userId,
+                commentId: comment.id,
+                contentId: comment.contentId,
+                contentType: comment.contentType,
+                commentText: comment.text
+            }).catch(err => console.error('Failed to queue report notification:', err));
         }
 
         // Trả về comment đã cập nhật với thông tin user
@@ -1773,7 +1504,7 @@ const getReportedComments = async (filters = {}) => {
 
     const processedComments = await Promise.all(rows.map(async (comment) => {
         const commentData = processCommentData(comment, null, 0); // Admin view, no specific userId for like/report status
-        
+
         // Thêm episode number nếu là episode
         if (commentData.contentType === CONTENT_TYPES.EPISODE) {
             const episode = await Episode.findByPk(commentData.contentId, { attributes: ['episodeNumber'] });
@@ -2331,7 +2062,7 @@ const getCommentWithParents = async (commentId, userId = null) => {
         // Build parent chain
         const parentChain = [];
         let currentComment = comment;
-        
+
         while (currentComment.parentId) {
             parentChain.unshift(currentComment.parentId);
             currentComment = await Comment.findByPk(currentComment.parentId);

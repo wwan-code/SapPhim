@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useQuery } from '@tanstack/react-query';
 import { useCreateComment, useUpdateComment } from '@/hooks/useCommentQueries';
-import useCommentStore from '@/stores/useCommentStore';
+import useCommentStore from '@/hooks/stores/useCommentStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import classNames from '@/utils/classNames';
 import userService from '@/services/userService';

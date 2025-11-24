@@ -17,6 +17,7 @@ export default (db) => {
                 User, Role, RefreshToken, Friendship, Genre, Country, Category,
                 Movie, Episode, Series, Section, AiLog, WatchHistory, Favorite,
                 Comment, Notification, LoginHistory,
+                MovieRoom, MovieRoomMember, MovieRoomChat,
         } = db;
 
         // ==================== USER & AUTHENTICATION ASSOCIATIONS ====================
@@ -46,6 +47,7 @@ export default (db) => {
                 User.hasMany(LoginHistory, { foreignKey: 'userId', as: 'loginHistories' });
                 LoginHistory.belongsTo(User, { foreignKey: 'userId', as: 'user' });
         }
+
         // ==================== CONTENT ASSOCIATIONS ====================
 
         // Genre – Movie (n-n)
@@ -66,9 +68,14 @@ export default (db) => {
                 Movie.belongsTo(Category, { foreignKey: 'categoryId', as: 'category' });
         }
 
-        // Movie – Episode (1-n)
+        // Movie – Episode (1-n) with CASCADE DELETE
         if (Movie && Episode) {
-                Movie.hasMany(Episode, { foreignKey: 'movieId', as: 'episodes' });
+                Movie.hasMany(Episode, {
+                        foreignKey: 'movieId',
+                        as: 'episodes',
+                        onDelete: 'CASCADE',
+                        hooks: true
+                });
                 Episode.belongsTo(Movie, { foreignKey: 'movieId', as: 'movie' });
         }
 
@@ -92,11 +99,24 @@ export default (db) => {
                 AiLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
         }
 
-        // WatchHistory (User/Movie/Episode)
+        // WatchHistory (User/Movie/Episode) with CASCADE DELETE
         if (User && Movie && Episode && WatchHistory) {
                 User.hasMany(WatchHistory, { foreignKey: 'userId', as: 'watchHistories' });
-                Movie.hasMany(WatchHistory, { foreignKey: 'movieId', as: 'watchHistories' });
-                Episode.hasMany(WatchHistory, { foreignKey: 'episodeId', as: 'watchHistories' });
+
+                Movie.hasMany(WatchHistory, {
+                        foreignKey: 'movieId',
+                        as: 'watchHistories',
+                        onDelete: 'CASCADE',
+                        hooks: true
+                });
+
+                Episode.hasMany(WatchHistory, {
+                        foreignKey: 'episodeId',
+                        as: 'watchHistories',
+                        onDelete: 'CASCADE',
+                        hooks: true
+                });
+
                 WatchHistory.belongsTo(User, { foreignKey: 'userId', as: 'user' });
                 WatchHistory.belongsTo(Movie, { foreignKey: 'movieId', as: 'movie' });
                 WatchHistory.belongsTo(Episode, { foreignKey: 'episodeId', as: 'episode' });
@@ -126,6 +146,56 @@ export default (db) => {
                 User.hasMany(Notification, { foreignKey: 'senderId', as: 'sentNotifications' });
                 Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
                 Notification.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+        }
+
+        // ==================== WATCH PARTY ASSOCIATIONS ====================
+
+        // MovieRoom relationships
+        if (User && MovieRoom) {
+                User.hasMany(MovieRoom, { foreignKey: 'hostId', as: 'hostedRooms' });
+                MovieRoom.belongsTo(User, { foreignKey: 'hostId', as: 'host' });
+        }
+
+        if (Movie && MovieRoom) {
+                Movie.hasMany(MovieRoom, { foreignKey: 'movieId', as: 'watchPartyRooms' });
+                MovieRoom.belongsTo(Movie, { foreignKey: 'movieId', as: 'movie' });
+        }
+
+        if (Episode && MovieRoom) {
+                Episode.hasMany(MovieRoom, { foreignKey: 'episodeId', as: 'watchPartyRooms' });
+                MovieRoom.belongsTo(Episode, { foreignKey: 'episodeId', as: 'episode' });
+        }
+
+        // MovieRoomMember relationships
+        if (MovieRoom && MovieRoomMember) {
+                MovieRoom.hasMany(MovieRoomMember, {
+                        foreignKey: 'roomId',
+                        as: 'members',
+                        onDelete: 'CASCADE',
+                        hooks: true
+                });
+                MovieRoomMember.belongsTo(MovieRoom, { foreignKey: 'roomId', as: 'room' });
+        }
+
+        if (User && MovieRoomMember) {
+                User.hasMany(MovieRoomMember, { foreignKey: 'userId', as: 'roomMemberships' });
+                MovieRoomMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+        }
+
+        // MovieRoomChat relationships
+        if (MovieRoom && MovieRoomChat) {
+                MovieRoom.hasMany(MovieRoomChat, {
+                        foreignKey: 'roomId',
+                        as: 'chatMessages',
+                        onDelete: 'CASCADE',
+                        hooks: true
+                });
+                MovieRoomChat.belongsTo(MovieRoom, { foreignKey: 'roomId', as: 'room' });
+        }
+
+        if (User && MovieRoomChat) {
+                User.hasMany(MovieRoomChat, { foreignKey: 'userId', as: 'roomChatMessages' });
+                MovieRoomChat.belongsTo(User, { foreignKey: 'userId', as: 'user' });
         }
 
         // ==================== VALIDATION COMPLETE ====================

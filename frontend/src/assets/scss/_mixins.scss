@@ -243,9 +243,13 @@
  * Truy cập/Khả dụng: Phụ thuộc @keyframes skeleton-shimmer, CSS variable --w-background-color-light, --w-border-color-dark
  */
 @mixin shimmer-animation {
-  background-image: linear-gradient(to right, var(--w-background-color-dark) 0%, var(--w-background-color-dark) 25%, var(--w-background-color) 50%, var(--w-background-color-light) 100%);
+  background: linear-gradient(90deg,
+      var(--w-background-color-dark) 0%,
+      var(--w-background-color-light) 20%,
+      var(--w-background-color-dark) 40%,
+      var(--w-background-color-dark) 100%);
   background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite linear;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -346,6 +350,7 @@
     opacity: 1;
   }
 }
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

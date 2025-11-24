@@ -1,6 +1,4 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { queryClient } from '@/utils/queryClient';
-import { friendQueryKeys } from '@/hooks/useFriendQueries';
 
 const initialState = {
   // Trạng thái online của bạn bè sẽ được quản lý ở đây
@@ -31,37 +29,11 @@ const friendSlice = createSlice({
         hidden,
       };
 
-      // Cập nhật dữ liệu trong cache của React Query một cách lạc quan (optimistic)
-      // để các component sử dụng useGetFriends() và useSearchUsers() có thể re-render.
-
-      // Cập nhật danh sách bạn bè (infinite query structure)
-      queryClient.setQueryData(
-        friendQueryKeys.lists(),
-        (oldData) => {
-          if (!oldData || !oldData.pages) return oldData;
-
-          return {
-            ...oldData,
-            pages: oldData.pages.map(page => {
-              if (!page || !page.data || !Array.isArray(page.data)) return page;
-
-              return {
-                ...page,
-                data: page.data.map(item =>
-                  item.id === userId
-                    ? {
-                        ...item,
-                        online: effectiveOnline,
-                        lastOnline: effectiveLastOnline,
-                        hidden,
-                      }
-                    : item
-                )
-              };
-            })
-          };
-        }
-      );
+      state.friendStatuses[userId] = {
+        online: effectiveOnline,
+        lastOnline: effectiveLastOnline,
+        hidden,
+      };
     },
 
     hydrateFriendStatuses: (state, action) => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { useNotificationQueries } from '@/hooks/useNotificationQueries';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationStore } from '@/hooks/stores/notificationStore';
 import { useDeviceType } from '@/hooks/useDeviceType';
 import { useFloatingDropdown } from '@/hooks/useFloatingDropdown';
 import classNames from '@/utils/classnames';

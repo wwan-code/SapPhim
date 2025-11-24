@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { useGetFriends } from '@/hooks/useFriendQueries';
+import { useGetFriends, useGetFriendStatuses } from '@/hooks/useFriendQueries';
 import userService from '@/services/userService';
 import { hydrateFriendStatuses } from '@/store/slices/friendSlice';
 import FriendCard from './FriendCard';
@@ -11,10 +11,10 @@ const FriendList = ({ user, isOwnProfile = true }) => {
   const dispatch = useDispatch();
 
   // Sử dụng React Query Infinite Query để fetch danh sách bạn bè
-  const { 
-    data, 
-    isLoading, 
-    isError, 
+  const {
+    data,
+    isLoading,
+    isError,
     error,
     fetchNextPage,
     hasNextPage,
@@ -32,26 +32,25 @@ const FriendList = ({ user, isOwnProfile = true }) => {
   // Fetch other user's friends with pagination
   const fetchOtherUserFriends = async (page = 1, append = false) => {
     if (!user?.uuid) return;
-    
+
     if (append) {
       setOtherUserLoadingMore(true);
     } else {
       setOtherUserLoading(true);
     }
-    
+
     setOtherUserError(null);
-    
+
     try {
       const response = await userService.getUserFriendsByUuid(user.uuid, { page, limit: 10 });
       const newFriends = response.data || [];
-      console.log("newFriends", newFriends);
-      
+
       if (append) {
         setOtherUserFriends(prev => [...prev, ...newFriends]);
       } else {
         setOtherUserFriends(newFriends);
       }
-      
+
       setOtherUserHasMore(response.meta?.hasMore || false);
       setOtherUserPage(page);
     } catch (e) {
@@ -73,34 +72,29 @@ const FriendList = ({ user, isOwnProfile = true }) => {
     fetchOtherUserFriends(otherUserPage + 1, true);
   };
 
-  // Flatten pages data for own profile
-  const friendsList = isOwnProfile 
-    ? data?.pages?.flatMap(page => page.data) || []
-    : otherUserFriends;
+  // Memoize friendsList để tránh tạo array mới mỗi render
+  const friendsList = useMemo(() =>
+    isOwnProfile
+      ? data?.pages?.flatMap(page => page.data) || []
+      : otherUserFriends,
+    [isOwnProfile, data?.pages, otherUserFriends]
+  );
 
+  // Memoize friend IDs để tránh tính toán lại không cần thiết
+  const friendIds = useMemo(() => {
+    if (!isOwnProfile || friendsList.length === 0) return [];
+    return Array.from(new Set(friendsList.map(f => f.id).filter(Boolean)));
+  }, [friendsList, isOwnProfile]);
+
+  // Sử dụng React Query để fetch friend statuses với caching
+  const { data: statusesData } = useGetFriendStatuses(friendIds);
+
+  // Hydrate Redux store khi có data mới từ React Query
   useEffect(() => {
-    if (!isOwnProfile || friendsList.length === 0) return;
-    const ids = Array.from(new Set(friendsList.map((friend) => friend.id).filter(Boolean)));
-    if (ids.length === 0) return;
-
-    let cancelled = false;
-
-    const syncPresence = async () => {
-      try {
-        const response = await userService.getUsersPresence(ids);
-        if (!cancelled && response?.data) {
-          dispatch(hydrateFriendStatuses(response.data));
-        }
-      } catch (error) {
-        console.error('Không thể đồng bộ trạng thái bạn bè:', error);
-      }
-    };
-
-    syncPresence();
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, friendsList, isOwnProfile]);
+    if (statusesData && statusesData.length > 0) {
+      dispatch(hydrateFriendStatuses(statusesData));
+    }
+  }, [statusesData, dispatch]);
 
   const isLoadingState = isOwnProfile ? isLoading : otherUserLoading;
   const isErrorState = isOwnProfile ? isError : !!otherUserError;
@@ -146,13 +140,13 @@ const FriendList = ({ user, isOwnProfile = true }) => {
           <FriendCard key={friend.id} user={{ ...friend, friendshipStatus: 'accepted' }} type="friends" />
         ))}
       </div>
-      
+
       {/* Load More Button */}
       {isOwnProfile ? (
         // Own profile - use infinite query
         hasNextPage && (
           <div className="friend-list__load-more">
-            <button 
+            <button
               className="friend-list__load-more-btn"
               onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
@@ -175,7 +169,7 @@ const FriendList = ({ user, isOwnProfile = true }) => {
         // Other user profile - use manual pagination
         otherUserHasMore && (
           <div className="friend-list__load-more">
-            <button 
+            <button
               className="friend-list__load-more-btn"
               onClick={handleLoadMoreOtherUser}
               disabled={otherUserLoadingMore}

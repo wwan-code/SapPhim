@@ -1,0 +1,267 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.movie-detail-skeleton {
+    position: relative;
+    padding-bottom: var(--w-spacing-xxl);
+    top: calc((var(--w-header-height-desktop) + var(--w-spacing-xl)) * -1);
+
+    @include breakpoint(tablet-and-below) {
+        top: calc((var(--w-header-height-mobile) + var(--w-spacing-md)) * -1);
+    }
+
+    &__hero {
+        position: relative;
+        width: 100%;
+        height: 800px;
+        z-index: 1;
+        overflow: hidden;
+
+        @include breakpoint(desktop-and-above) {
+            height: 0;
+            padding-bottom: 50%;
+            aspect-ratio: 18 / 9;
+        }
+
+        @include breakpoint(tablet-and-below) {
+            padding-bottom: 50%;
+            aspect-ratio: 18 / 9;
+            height: 0;
+        }
+
+        @include breakpoint(tv) {
+            padding-bottom: 45%;
+        }
+    }
+
+    &__hero-background {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+    }
+
+    &__hero-cover {
+        width: 100%;
+        max-width: 1900px;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    &__hero-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--w-background-color-dark);
+        opacity: 0.5;
+    }
+
+    &__content {
+        position: relative;
+        z-index: 2;
+    }
+
+    &__main-info {
+        margin-top: -30%;
+        display: flex;
+        gap: var(--w-spacing-xl);
+        align-items: flex-start;
+        margin-bottom: var(--w-spacing-lg);
+
+        @include breakpoint(tablet-and-below) {
+            margin-top: -120px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @include breakpoint(tv) {
+            margin-top: -25%;
+            gap: var(--w-spacing-tv-xl);
+        }
+    }
+
+    &__main-left {
+        flex-shrink: 0;
+        width: 260px;
+        display: flex;
+        flex-direction: column;
+
+        @include breakpoint(mobile) {
+            width: 200px;
+        }
+
+        @include breakpoint(tv) {
+            width: 300px;
+        }
+    }
+
+    &__main-right {
+        flex-grow: 1;
+        width: 100%;
+    }
+
+    &__poster {
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        border-radius: var(--w-border-radius-lg);
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+        box-shadow: var(--w-box-shadow-lg);
+
+        @include breakpoint(mobile) {
+            margin-bottom: var(--w-spacing-lg);
+        }
+    }
+
+    &__details {
+        margin-top: 0;
+        width: 100%;
+    }
+
+    &__title {
+        height: 40px;
+        width: 60%;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        margin-bottom: var(--w-spacing-md);
+        @include shimmer-animation;
+
+        @include breakpoint(mobile) {
+            width: 80%;
+            margin: 0 auto var(--w-spacing-md);
+        }
+    }
+
+    &__meta {
+        display: flex;
+        align-items: center;
+        gap: var(--w-spacing-md);
+        margin-bottom: var(--w-spacing-lg);
+
+        @include breakpoint(mobile) {
+            justify-content: center;
+        }
+    }
+
+    &__meta-item {
+        height: 20px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+
+    &__genres {
+        display: flex;
+        gap: var(--w-spacing-sm);
+        margin-bottom: var(--w-spacing-md);
+
+        @include breakpoint(mobile) {
+            justify-content: center;
+        }
+    }
+
+    &__genre {
+        width: 80px;
+        height: 30px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+
+    &__description {
+        margin-bottom: var(--w-spacing-lg);
+
+        .skeleton-line {
+            height: 16px;
+            width: 100%;
+            background-color: var(--w-background-color-dark);
+            border-radius: var(--w-border-radius);
+            margin-bottom: 8px;
+            @include shimmer-animation;
+        }
+    }
+
+    &__actions {
+        @include flex(row, space-between, center);
+        gap: var(--w-spacing-xl);
+
+        @include breakpoint(tablet-and-below) {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+
+    &__actions-left {
+        @include flex(row, flex-start, center);
+        gap: var(--w-spacing-xl);
+
+        @include breakpoint(tablet-and-below) {
+            @include flex(row, space-between, center);
+        }
+    }
+
+    &__cta {
+        width: 140px;
+        height: 48px;
+        border-radius: 999px;
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+
+        @include breakpoint(mobile) {
+            width: 100%;
+        }
+    }
+
+    &__quick {
+        display: flex;
+        gap: var(--w-spacing-xl);
+    }
+
+    &__quick-item {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+    }
+
+    &__section {
+        margin-top: var(--w-spacing-xxl);
+    }
+
+    &__section-title {
+        width: 200px;
+        height: 32px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        margin-bottom: var(--w-spacing-md);
+        @include shimmer-animation;
+    }
+
+    &__episodes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: var(--w-spacing-md);
+
+        @include breakpoint(tv) {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+    }
+
+    &__episode-card {
+        height: 40px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+}

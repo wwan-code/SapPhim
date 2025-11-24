@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useSettingStore from '../stores/useSettingStore';
-import PrivacySettings from '../components/settings/PrivacySettings';
-import NotificationSettings from '../components/settings/NotificationSettings';
-import AccountManagement from '../components/settings/AccountManagement';
+import useSettingStore from '@/hooks/stores/useSettingStore';
+import PrivacySettings from '@/components/settings/PrivacySettings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
+import AccountManagement from '@/components/settings/AccountManagement';
 import { FaLock, FaBell, FaCog, FaBars } from 'react-icons/fa';
-import { useDeviceType } from '../hooks/useDeviceType';
-import '../assets/scss/pages/_setting-page.scss';
+import { useDeviceType } from '@/hooks/useDeviceType';
+import '@/assets/scss/pages/_setting-page.scss';
 
 const SettingPage = () => {
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ const SettingPage = () => {
                   </ul>
                 </div>
                 <div className="setting-page__toggle-menu">
-                  <button 
+                  <button
                     className={`setting-page__toggle-button ${isSidebarOpen ? 'setting-page__toggle-button--active' : ''}`}
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                   >

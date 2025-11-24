@@ -287,17 +287,31 @@
     font-weight: var(--w-font-weight-bold);
     border-radius: 999px;
     text-decoration: none;
-    background: linear-gradient(135deg, rgba(var(--w-primary-color-rgb), 1) 0%, rgba(var(--w-primary-bg-subtle-rgb), 1) 100%);
-    box-shadow: 0 10px 30px rgba(var(--w-primary-color-rgb), .25);
-    transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+    background: linear-gradient(45deg,
+        rgba(var(--w-primary-color-rgb), 1),
+        rgba(224, 224, 224, 0.95));
+    box-shadow:
+      0 8px 24px rgba(var(--w-primary-color-rgb), 0.4),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+    @include liquid-motion(all, 0.3s, var(--w-motion-easing-spring));
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+    will-change: transform;
 
     i {
       margin-right: 6px;
     }
 
     &:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.02);
+      transform: translateY(-4px) scale(1.05) translateZ(0);
+      box-shadow:
+        0 12px 32px rgba(var(--w-primary-color-rgb), 0.5),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+
+      @include breakpoint(mobile) {
+        transform: translateZ(0); // Vô hiệu hoá hover trên mobile
+      }
     }
 
     &:active {
@@ -414,6 +428,36 @@
   &__episodes {
     margin-top: var(--w-spacing-xxl);
   }
+
+
+  .episode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: var(--w-spacing-md);
+
+    @include breakpoint(tv) {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: var(--w-spacing-tv-md);
+    }
+  }
+
+  .episode-card {
+    display: block;
+    padding: var(--w-spacing-sm);
+    background-color: var(--w-background-color-light);
+    border: 1px solid var(--w-border-color);
+    border-radius: var(--w-border-radius);
+    text-align: center;
+    text-decoration: none;
+    color: var(--w-text-color);
+    transition: var(--w-transition-ease);
+
+    &:hover {
+      background-color: var(--w-primary-color);
+      color: var(--w-text-color-light);
+      border-color: var(--w-primary-color);
+    }
+  }
 }
 
 .video-responsive {
@@ -429,34 +473,5 @@
     height: 100%;
     width: 100%;
     position: absolute;
-  }
-}
-
-.episode-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: var(--w-spacing-md);
-
-  @include breakpoint(tv) {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--w-spacing-tv-md);
-  }
-}
-
-.episode-card {
-  display: block;
-  padding: var(--w-spacing-sm);
-  background-color: var(--w-background-color-light);
-  border: 1px solid var(--w-border-color);
-  border-radius: var(--w-border-radius);
-  text-align: center;
-  text-decoration: none;
-  color: var(--w-text-color);
-  transition: var(--w-transition-ease);
-
-  &:hover {
-    background-color: var(--w-primary-color);
-    color: var(--w-text-color-light);
-    border-color: var(--w-primary-color);
   }
 }

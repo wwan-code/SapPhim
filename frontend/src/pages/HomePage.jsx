@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import movieService from '@/services/movieService';
+import React from 'react';
+import { useGetLatestMovies } from '@/hooks/useMovieQueries';
 import MovieCardSkeleton from '@/components/skeletons/MovieCardSkeleton';
 import MovieCard from '@/components/MovieCard';
 import HeroMovie from '@/components/HeroMovie';
@@ -10,30 +10,11 @@ import MovieTheaterSection from '@/components/MovieTheaterSection';
 import { Link } from 'react-router-dom';
 
 const HomePage = () => {
-  const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: movies = [], isLoading: loading, error } = useGetLatestMovies(12);
 
-  useEffect(() => {
-    const fetchHomePageData = async () => {
-      try {
-        setLoading(true);
-        const latestResponse = await movieService.getLatestMovies({ limit: 12 });
-        if (latestResponse.success && Array.isArray(latestResponse.data)) {
-          setMovies(latestResponse.data);
-        } else {
-          setError('Could not fetch latest movies.');
-        }
-      } catch (err) {
-        setError(err.message || 'An error occurred while fetching movies.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHomePageData();
-  }, []);
+  if (error) {
+    console.error('Error fetching latest movies:', error);
+  }
 
   const renderSkeletonGrid = (count = 12) => {
     return Array.from({ length: count }).map((_, index) => <MovieCardSkeleton key={index} isHorizontal={true} />);
