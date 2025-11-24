@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useSearchParams } from 'react-router-dom';
 import { useComments, useCommentWithParents } from '@/hooks/useCommentQueries';
-import useCommentStore from '@/stores/useCommentStore';
+import useCommentStore from '@/hooks/stores/useCommentStore';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
 import CommentEmpty from './CommentEmpty';
@@ -26,7 +26,7 @@ const CommentSection = ({
     const [searchParams] = useSearchParams();
     const commentIdFromUrl = searchParams.get('commentId');
     const scrollAttemptedRef = useRef(false);
-    
+
     // Use React Query hook for caching
     const { data: parentChainData, isLoading: isLoadingParentChain } = useCommentWithParents(
         commentIdFromUrl && !scrollAttemptedRef.current ? parseInt(commentIdFromUrl) : null
@@ -99,7 +99,7 @@ const CommentSection = ({
 
         const attemptScroll = () => {
             const elementId = `comment-${commentIdFromUrl}`;
-            
+
             // Try direct scroll first
             if (scrollToAndHighlight(elementId)) {
                 scrollAttemptedRef.current = true;
@@ -112,11 +112,11 @@ const CommentSection = ({
                 const parentsToExpand = parentChainData.parentChain.filter(
                     parentId => !expandedReplies.has(parentId)
                 );
-                
+
                 if (parentsToExpand.length > 0) {
                     // Batch expand to reduce re-renders
                     parentsToExpand.forEach(parentId => toggleExpandedReplies(parentId));
-                    
+
                     // Wait for DOM update with requestAnimationFrame
                     requestAnimationFrame(() => {
                         setTimeout(() => {

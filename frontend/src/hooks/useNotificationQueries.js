@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import notificationService from '@/services/notificationService';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationStore } from '@/hooks/stores/notificationStore';
 
 const NOTIFICATION_QUERY_KEYS = {
   all: ['notifications'],

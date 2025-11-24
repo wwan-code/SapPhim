@@ -15,12 +15,15 @@ import rateLimit from 'express-rate-limit';
 process.env.TZ = 'Asia/Ho_Chi_Minh';
 
 import sequelize from './config/database.js';
-import { initSocket } from './config/socket.js';
+import { initSocket, shutdownSocket } from './config/socket.js';
+import { redisPoolManager } from './config/redis.js';
 import { errorHandler } from './middlewares/error.middleware.js';
+import { poolMonitorMiddleware } from './middlewares/poolMonitor.middleware.js';
+import healthMonitor from './utils/healthMonitor.js';
 import logger from './utils/logger.js';
-import './workers/viewWorker.js'; // Initialize worker
+import './workers/viewWorker.js';
+import './workers/notificationWorker.js';
 
-// Import routes
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import friendRoutes from './routes/friend.routes.js';
@@ -37,8 +40,8 @@ import favoriteRoutes from './routes/favorite.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import commentRoutes from './routes/comment.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
-import messageRoutes from './routes/message.routes.js';
 import settingRoutes from './routes/setting.routes.js';
+import watchPartyRoutes from './routes/watchParty.routes.js';
 
 dotenv.config();
 
@@ -58,13 +61,11 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Cho phép requests không có origin (như mobile apps, Postman)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      // Log để debug
       logger.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
@@ -75,15 +76,13 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// ==================== SECURITY & MIDDLEWARE ====================
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false, // Disable for development
+    contentSecurityPolicy: false,
   })
 );
 
-// Morgan logging với format tùy chỉnh
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
@@ -105,6 +104,9 @@ const limiter = rateLimit({
 
 app.use('/api/auth', limiter);
 
+// ==================== POOL MONITORING ====================
+app.use(poolMonitorMiddleware);
+
 // ==================== SESSION CONFIGURATION ====================
 const SequelizeStore = connectSessionSequelize(session.Store);
 const sessionStore = new SequelizeStore({ db: sequelize });
@@ -112,21 +114,46 @@ const sessionStore = new SequelizeStore({ db: sequelize });
 app.use(session({
   secret: process.env.JWT_SECRET,
   resave: false,
-  saveUninitialized: false, // Changed to false for better performance
+  saveUninitialized: false,
   store: sessionStore,
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
   },
-  name: 'sessionId', // Custom session name
+  name: 'sessionId',
 }));
 
 // ==================== STATIC FILES ====================
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  maxAge: '1d', // Cache static files for 1 day
+  maxAge: '1d', // Cache for 1 day
   etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    // Enable CORS for all uploads
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range');
+
+    // Set proper MIME types for HLS
+    if (filePath.endsWith('.m3u8')) {
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.setHeader('Cache-Control', 'no-cache'); // Don't cache playlists
+    } else if (filePath.endsWith('.ts')) {
+      res.setHeader('Content-Type', 'video/mp2t');
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // Cache segments for 1 week
+    } else if (filePath.endsWith('.vtt')) {
+      res.setHeader('Content-Type', 'text/vtt');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache VTT for 1 day
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache images for 1 year
+    }
+
+    // Enable range requests for video segments
+    res.setHeader('Accept-Ranges', 'bytes');
+  }
 }));
 
 // ==================== HEALTH CHECK ====================
@@ -139,12 +166,18 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/health/detailed', async (req, res) => {
+  const metrics = healthMonitor.getAllMetrics();
+  res.json(metrics);
+});
+
 app.get('/', (req, res) => {
   res.json({
     message: 'Welcome to the Sạp Phim application.',
     version: '2.0.0',
     endpoints: {
       health: '/health',
+      healthDetailed: '/health/detailed',
       api: '/api',
       docs: '/api/docs',
     },
@@ -155,7 +188,6 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/messages', messageRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/genres', genreRoutes);
 app.use('/api/countries', countryRoutes);
@@ -170,6 +202,7 @@ app.use('/api', episodeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/watch-party', watchPartyRoutes);
 
 // ==================== 404 HANDLER ====================
 app.use((req, res, next) => {
@@ -195,15 +228,12 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 const startServer = async () => {
   try {
-    // Test database connection
     await sequelize.authenticate();
     logger.info('✅ Database connection established successfully');
 
-    // Sync session store
     await sessionStore.sync();
     logger.info('✅ Session store synchronized');
 
-    // Start HTTP server
     httpServer.listen(PORT, HOST, () => {
       logger.info(`🚀 Server running on ${HOST}:${PORT}`);
       logger.info(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -217,16 +247,16 @@ const startServer = async () => {
     });
 
     // ==================== MONITORING ====================
-    // Log memory usage every 30 minutes
+    // Log pool stats every 5 minutes
     setInterval(() => {
-      const used = process.memoryUsage();
-      logger.info('📊 Memory Usage:', {
-        rss: `${Math.round(used.rss / 1024 / 1024)} MB`,
-        heapTotal: `${Math.round(used.heapTotal / 1024 / 1024)} MB`,
-        heapUsed: `${Math.round(used.heapUsed / 1024 / 1024)} MB`,
-        external: `${Math.round(used.external / 1024 / 1024)} MB`,
+      const stats = healthMonitor.getAllMetrics();
+      logger.info('📊 System Health:', {
+        memory: stats.system.rss,
+        db: `${stats.database.active}/${stats.database.size} (Wait: ${stats.database.waiting})`,
+        redis: `M:${stats.redis.main?.active} C:${stats.redis.cache?.active} P:${stats.redis.pubsub?.active}`,
+        socket: `${stats.socketIO.connected} clients`,
       });
-    }, 30 * 60 * 1000);
+    }, 5 * 60 * 1000);
 
   } catch (err) {
     logger.error('❌ Failed to start server:', err);
@@ -244,10 +274,10 @@ const gracefulShutdown = async (signal) => {
 
     try {
       // Close Socket.IO
-      if (io) {
-        logger.info('🛑 Closing Socket.IO connections...');
-        io.close();
-      }
+      await shutdownSocket();
+
+      // Close Redis Pools
+      await redisPoolManager.shutdown();
 
       // Close database connection
       logger.info('🛑 Closing database connection...');

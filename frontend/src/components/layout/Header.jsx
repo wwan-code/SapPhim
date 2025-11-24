@@ -9,7 +9,7 @@ import CustomOverlayTrigger from '@/components/CustomTooltip/CustomOverlayTrigge
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import UserDropdown from '@/components/navigation/UserDropdown';
 import { useNotificationQueries } from '@/hooks/useNotificationQueries';
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationStore } from '@/hooks/stores/notificationStore';
 import { useDropdown } from '@/hooks/useDropdown';
 import { getAvatarUrl } from '@/utils/getAvatarUrl';
 import { NAV_ITEMS } from '@/config/navItems';

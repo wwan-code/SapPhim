@@ -1,39 +1,48 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '@/utils/getAvatarUrl';
 
 const RecommendedList = ({ recommendedMovies }) => {
   if (!recommendedMovies || recommendedMovies.length === 0) return null;
 
   return (
-    <ul className="episode-list">
+    <div className="recommended-list">
       {recommendedMovies.map((movie) => {
         const title = movie.titles?.find((t) => t.type === 'default')?.title || 'Untitled';
+        const originalTitle = movie.titles?.find(t => t.type === 'original')?.title;
+
         return (
-          <li key={movie.uuid}>
-            <Link to={`/movie/${movie.slug}`} className="episode-item">
+          <Link key={movie.uuid} to={`/movie/${movie.slug}`} className="recommended-card">
+            <div className="recommended-card__poster">
               <img
-                src={movie.image || `https://placehold.co/160x90/222/fff?text=Movie`}
+                src={getImageUrl(movie?.image?.posterUrl) || `https://placehold.co/160x240/222/fff?text=Movie`}
                 alt={title}
-                className="episode-thumbnail"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = `https://placehold.co/160x90/222/fff?text=Movie`;
+                  e.target.src = `https://placehold.co/160x240/222/fff?text=Movie`;
                 }}
               />
-              <div className="episode-info">
-                <span className="episode-number" style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
-                  {title}
-                </span>
-                <span className="episode-title">
-                  {movie.year || 'N/A'} • {movie.quality || 'HD'}
-                </span>
+            </div>
+            <div className="recommended-card__info">
+              <h4 className="recommended-card__title" title={title}>{title}</h4>
+              {originalTitle && <span className="recommended-card__subtitle">{originalTitle}</span>}
+              <div className="recommended-card__meta">
+                <span className="meta-tag">{movie.quality || 'HD'}</span>
+                <span className="meta-dot">•</span>
+                <span>{movie.year || 'N/A'}</span>
+                {movie.currentEpisode && (
+                  <>
+                    <span className="meta-dot">•</span>
+                    <span>Tập {movie.currentEpisode}</span>
+                  </>
+                )}
               </div>
-            </Link>
-          </li>
+            </div>
+          </Link>
         );
       })}
-    </ul>
+    </div>
   );
 };
 
-export default RecommendedList;
+export default React.memo(RecommendedList);

@@ -10,31 +10,43 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: process.env.DB_DIALECT,
-    timezone: process.env.DB_TIMEZONE || '+07:00', // Múi giờ Việt Nam (UTC+7)
-    logging: process.env.NODE_ENV === 'development' ? console.log : false, // Chỉ log trong development
+    timezone: process.env.DB_TIMEZONE || '+07:00',
+    logging: process.env.NODE_ENV === 'development'
+      ? (msg) => console.log(`[Sequelize] ${msg}`)
+      : false,
+
+    // Optimized Connection Pool
     pool: {
-      max: 20, // Tăng số connection tối đa cho chat realtime
-      min: 5,  // Giữ ít nhất 5 connection sẵn sàng
-      acquire: 30000, // Thời gian chờ tối đa để lấy connection
-      idle: 10000,    // Thời gian idle trước khi đóng connection
-      evict: 1000,    // Kiểm tra connection idle mỗi 1 giây
-      handleDisconnects: true, // Tự động xử lý ngắt kết nối
+      max: parseInt(process.env.DB_POOL_MAX, 10) || (process.env.NODE_ENV === 'production' ? 50 : 20),
+      min: parseInt(process.env.DB_POOL_MIN, 10) || (process.env.NODE_ENV === 'production' ? 10 : 5),
+      acquire: parseInt(process.env.DB_POOL_ACQUIRE, 10) || 30000,
+      idle: parseInt(process.env.DB_POOL_IDLE, 10) || 10000,
+      evict: parseInt(process.env.DB_POOL_EVICT, 10) || 1000,
+      handleDisconnects: true,
+      validate: (obj) => {
+        // Validate connection before use
+        if (!obj || typeof obj.query !== 'function') return false;
+        return true;
+      }
     },
+
     dialectOptions: {
-      connectTimeout: 60000, // Timeout kết nối database
-      timezone: process.env.DB_TIMEZONE || '+07:00', // Đảm bảo timezone cho MySQL connection
+      connectTimeout: 60000,
+      timezone: process.env.DB_TIMEZONE || '+07:00',
+      // Statement timeout to prevent long-running queries (60s)
+      dateStrings: true,
+      typeCast: true,
     },
+
+    // Robust Retry Strategy
     retry: {
       match: [
         /ETIMEDOUT/,
         /EHOSTUNREACH/,
         /ECONNRESET/,
         /ECONNREFUSED/,
-        /ETIMEDOUT/,
         /ESOCKETTIMEDOUT/,
-        /EHOSTUNREACH/,
         /EPIPE/,
-        /EAI_AGAIN/,
         /SequelizeConnectionError/,
         /SequelizeConnectionRefusedError/,
         /SequelizeHostNotFoundError/,
@@ -42,8 +54,22 @@ const sequelize = new Sequelize(
         /SequelizeInvalidConnectionError/,
         /SequelizeConnectionTimedOutError/
       ],
-      max: 3 // Thử lại tối đa 3 lần
-    }
+      max: 3,
+      backoffBase: 1000,
+      backoffExponent: 1.5,
+    },
+
+    // Connection Lifecycle Hooks
+    hooks: {
+      afterConnect: (connection, config) => {
+        // console.log('[Sequelize] New connection established');
+      },
+      beforeDisconnect: (connection) => {
+        // console.log('[Sequelize] Connection closing');
+      }
+    },
+
+    benchmark: process.env.NODE_ENV === 'development', // Log query time in dev
   }
 );
 

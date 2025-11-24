@@ -12,7 +12,7 @@ import MentionTooltip from './MentionTooltip';
 import { formatDistanceToNow } from '@/utils/dateUtils';
 import CommentActions from './CommentActions';
 import CommentForm from './CommentForm';
-import useCommentStore from '@/stores/useCommentStore';
+import useCommentStore from '@/hooks/stores/useCommentStore';
 import {
     useToggleLike,
     useReportComment,
@@ -196,7 +196,7 @@ const CommentItem = ({
     const sanitizedMarkdown = DOMPurify.sanitize(comment.text);
 
     return (
-        <article className={classNames("comment-item", {"comment-item--nested": comment.hasReplies})} id={comment.id} data-nested={comment.hasReplies} data-depth={depth}>
+        <article className={classNames("comment-item", { "comment-item--nested": comment.hasReplies })} id={comment.id} data-nested={comment.hasReplies} data-depth={depth}>
             <div className="comment-item__layout">
                 <div className="comment-item__avatar" data-depth={depth}>
                     <img src={getAvatarUrl(comment.user)} alt={`${comment.user?.username} avatar`} loading="lazy" />

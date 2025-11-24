@@ -5,7 +5,7 @@ import { Navigation } from 'swiper/modules';
 import { FaPlay, FaClock, FaInfoCircle, FaHeart } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
-import movieService from '@/services/movieService';
+import { useGetTrendingMovies } from '@/hooks/useMovieQueries';
 import favoriteService from '@/services/favoriteService';
 import HeroMovieSkeleton from './skeletons/HeroMovieSkeleton';
 import CustomOverlayTrigger from './CustomTooltip/CustomOverlayTrigger';
@@ -68,25 +68,23 @@ const MovieCard = memo(({ movie, index, isActive, onClick, getMovieTitle, getPos
     </div>
   );
 }, (prevProps, nextProps) => {
-  return prevProps.isActive === nextProps.isActive && 
-         prevProps.movie.uuid === nextProps.movie.uuid;
+  return prevProps.isActive === nextProps.isActive &&
+    prevProps.movie.uuid === nextProps.movie.uuid;
 });
 
 MovieCard.displayName = 'MovieCard';
 
 const HeroMovie = () => {
   const { user: currentUser } = useSelector((state) => state.auth);
-  
+
   // States
-  const [trendingMovies, setTrendingMovies] = useState([]);
+  // States
   const [currentMovie, setCurrentMovie] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [loadingFavorite, setLoadingFavorite] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  
+
   // Refs
   const swiperRef = useRef(null);
   const imagePreloadRef = useRef(null);
@@ -158,70 +156,22 @@ const HeroMovie = () => {
     };
   }, [currentMovie?.id, currentUser]);
 
-  // Fetch trending movies
+  // Fetch trending movies using React Query
+  const { data: trendingMovies = [], isLoading: loading, error } = useGetTrendingMovies(5);
+
+  // Initialize current movie when data loads
   useEffect(() => {
-    const fetchTrendingMovies = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await movieService.getTrendingMovies({ limit: 5 });
-        
-        if (response.success && Array.isArray(response.data)) {
-          setTrendingMovies(response.data);
-          if (response.data.length > 0) {
-            setCurrentMovie(response.data[0]);
-            setActiveSlideIndex(0);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching trending movies:', error);
-        setError(error.message || 'Không thể tải danh sách phim trending');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (trendingMovies.length > 0 && !currentMovie) {
+      setCurrentMovie(trendingMovies[0]);
+      setActiveSlideIndex(0);
+    }
+  }, [trendingMovies, currentMovie]);
 
-    fetchTrendingMovies();
-  }, []);
-
-  // Handle image load with preloading
+  // Handle image load
   useEffect(() => {
     if (!currentMovie) return;
-
     setImageLoaded(false);
-    
-    // Cancel previous preload
-    if (imagePreloadRef.current) {
-      imagePreloadRef.current.onload = null;
-      imagePreloadRef.current.onerror = null;
-    }
-
-    const img = new Image();
-    img.decoding = 'async';
-    img.loading = 'eager';
-    const coverUrl = getCoverUrl(currentMovie);
-    
-    img.onload = () => {
-      setImageLoaded(true);
-      imagePreloadRef.current = null;
-    };
-    
-    img.onerror = () => {
-      setImageLoaded(true); // Show anyway to prevent infinite loading
-      imagePreloadRef.current = null;
-    };
-    
-    img.src = coverUrl;
-    imagePreloadRef.current = img;
-
-    return () => {
-      if (imagePreloadRef.current) {
-        imagePreloadRef.current.onload = null;
-        imagePreloadRef.current.onerror = null;
-      }
-    };
-  }, [currentMovie, getCoverUrl]);
+  }, [currentMovie]);
 
   // Handlers with performance optimizations
   const handleSlideChange = useCallback(
@@ -255,25 +205,25 @@ const HeroMovie = () => {
     setIsFavorite(!originalIsFavorite);
 
     try {
-      const response = originalIsFavorite 
+      const response = originalIsFavorite
         ? await favoriteService.remove(currentMovie.id)
         : await favoriteService.add(currentMovie.id);
-      
+
       toast.success(response.message);
     } catch (error) {
       setIsFavorite(originalIsFavorite);
       toast.error(
-        error.response?.data?.message || 
+        error.response?.data?.message ||
         "Đã xảy ra lỗi khi thay đổi trạng thái yêu thích."
       );
     }
   }, [currentUser, currentMovie?.id, isFavorite]);
 
   const handlePlayNow = useCallback(() => {
-    if (currentMovie?.uuid) {
-      window.location.href = `/watch/${currentMovie.uuid}/episode/1`;
+    if (currentMovie?.slug) {
+      window.location.href = `/watch/${currentMovie.slug}/episode/1`;
     }
-  }, [currentMovie?.uuid]);
+  }, [currentMovie?.slug]);
 
   // Other utility functions
   const formatDuration = useCallback((duration) => {
@@ -342,11 +292,16 @@ const HeroMovie = () => {
     <div className="hero-movie">
       {/* Background Layer */}
       <div className="hero-movie__background">
-        <div
+        <img
           className={classNames('hero-movie__background-image', {
             'loaded': imageLoaded
           })}
-          style={{ backgroundImage: `url(${coverUrl})` }}
+          src={coverUrl}
+          alt=""
+          fetchPriority="high"
+          loading="eager"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)}
           aria-hidden="true"
         />
         <div className="hero-movie__cover-fade">

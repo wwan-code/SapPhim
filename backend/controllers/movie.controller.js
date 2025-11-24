@@ -112,15 +112,19 @@ const getMovieWatchData = asyncHandler(async (req, res) => {
   const userId = req.user ? req.user.id : null; // userId sẽ có nếu verifyTokenOptional thành công
 
   const result = await movieService.getMovieWatchDataBySlug(slug, episodeNumber, userId);
-  if (result.movie) {
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } else {
+
+  if (!result.movie) {
     res.status(404);
     throw new Error('Phim hoặc tập phim không được tìm thấy.');
   }
+
+  // Trả về success ngay cả khi không có episodes, frontend sẽ xử lý UI
+  res.status(200).json({
+    success: true,
+    data: result,
+    // Thêm flag để frontend biết trạng thái
+    hasNoEpisodes: result.hasNoEpisodes || false,
+  });
 });
 
 /**
@@ -190,7 +194,12 @@ const deleteMovie = asyncHandler(async (req, res) => {
  * @access  Public
  */
 const getTrendingMovies = asyncHandler(async (req, res) => {
-  const result = await movieService.getTrendingMovies(req.query);
+  const cacheKey = `movies:trending:${JSON.stringify(req.query)}`;
+
+  const result = await redisHelpers.cache(cacheKey, async () => {
+    return await movieService.getTrendingMovies(req.query);
+  }, 900); // Cache 15 minutes
+
   res.status(200).json({
     success: true,
     data: result.data,

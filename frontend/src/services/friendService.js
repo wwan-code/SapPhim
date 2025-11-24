@@ -11,7 +11,7 @@ const getFriends = (params = {}) => {
   queryParams.append('page', page);
   queryParams.append('limit', limit);
   if (q) queryParams.append('q', q);
-  
+
   return api.get(`/friends?${queryParams.toString()}`);
 };
 
@@ -47,6 +47,10 @@ const rejectRequest = (inviteId) => {
   return api.post(`/friends/reject/${inviteId}`);
 };
 
+const cancelRequest = (requestId) => {
+  return api.post(`/friends/cancel/${requestId}`);
+};
+
 const removeFriend = (friendId) => {
   return api.delete(`/friends/remove/${friendId}`);
 };
@@ -69,6 +73,7 @@ const friendService = {
   sendRequest,
   acceptRequest,
   rejectRequest,
+  cancelRequest,
   removeFriend,
   searchUsers,
 };

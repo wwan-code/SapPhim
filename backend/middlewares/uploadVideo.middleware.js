@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,25 +20,41 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
+        // Sanitize filename
         const uniqueSuffix = uuidv4();
-        cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
+        const cleanName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
+        cb(null, `${uniqueSuffix}_${cleanName}`);
     },
 });
 
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['video/mp4', 'video/x-matroska', 'video/avi', 'video/quicktime'];
+    // Allowed MIME types
+    const allowedTypes = [
+        'video/mp4',
+        'video/x-matroska', // .mkv
+        'video/avi',
+        'video/quicktime', // .mov
+        'video/x-msvideo', // .avi legacy
+        'video/webm'
+    ];
+
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new Error('Invalid file type. Only MP4, MKV, AVI, and MOV are allowed.'), false);
+        logger.warn(`Blocked upload of invalid mime type: ${file.mimetype}`);
+        cb(new Error('Invalid file type. Only MP4, MKV, AVI, MOV, and WEBM are allowed.'), false);
     }
+};
+
+// Configure limits
+const limits = {
+    fileSize: 10 * 1024 * 1024 * 1024, // 10GB limit (increased for 4K)
+    files: 1, // Only 1 file per request
 };
 
 const uploadVideo = multer({
     storage: storage,
-    limits: {
-        fileSize: 2 * 1024 * 1024 * 1024, // 2GB limit
-    },
+    limits: limits,
     fileFilter: fileFilter,
 });
 

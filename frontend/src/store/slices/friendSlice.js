@@ -1,6 +1,4 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { queryClient } from '@/utils/queryClient';
-import { friendQueryKeys } from '@/hooks/useFriendQueries';
 
 const initialState = {
   // Trạng thái online của bạn bè sẽ được quản lý ở đây
@@ -19,38 +17,36 @@ const friendSlice = createSlice({
      * có thể được cập nhật tức thì ở đây để UI phản ứng nhanh hơn.
      */
     onUserStatusUpdate: (state, action) => {
-      const { userId, online, lastOnline } = action.payload;
-      state.friendStatuses[userId] = { online, lastOnline };
+      const { userId, online, lastOnline, hidden = false } = action.payload;
+      if (!userId) return;
 
-      // Cập nhật dữ liệu trong cache của React Query một cách lạc quan (optimistic)
-      // để các component sử dụng useGetFriends() và useSearchUsers() có thể re-render.
+      const effectiveOnline = hidden ? false : online;
+      const effectiveLastOnline = hidden ? null : lastOnline;
 
-      // Cập nhật danh sách bạn bè (infinite query structure)
-      queryClient.setQueryData(
-        friendQueryKeys.lists(),
-        (oldData) => {
-          if (!oldData || !oldData.pages) return oldData;
-          
-          return {
-            ...oldData,
-            pages: oldData.pages.map(page => {
-              if (!page || !page.data || !Array.isArray(page.data)) return page;
-              
-              return {
-                ...page,
-                data: page.data.map(item =>
-                  item.id === userId ? { ...item, online, lastOnline } : item
-                )
-              };
-            })
-          };
-        }
-      );
+      state.friendStatuses[userId] = {
+        online: effectiveOnline,
+        lastOnline: effectiveLastOnline,
+        hidden,
+      };
 
-      // Cập nhật kết quả tìm kiếm (invalidate để re-fetch nếu cần)
-      // Hoặc có thể cập nhật optimistic nếu có cấu trúc dữ liệu cụ thể cho search
-      // Hiện tại, invalidate là an toàn nhất vì search queries có thể rất đa dạng
-      queryClient.invalidateQueries({ queryKey: friendQueryKeys.search('') });
+      state.friendStatuses[userId] = {
+        online: effectiveOnline,
+        lastOnline: effectiveLastOnline,
+        hidden,
+      };
+    },
+
+    hydrateFriendStatuses: (state, action) => {
+      const statuses = Array.isArray(action.payload) ? action.payload : [];
+      statuses.forEach((status) => {
+        if (!status?.userId) return;
+        const hidden = !!status.hidden;
+        state.friendStatuses[status.userId] = {
+          online: hidden ? false : !!status.online,
+          lastOnline: hidden ? null : status.lastOnline,
+          hidden,
+        };
+      });
     },
 
     /**
@@ -64,6 +60,7 @@ const friendSlice = createSlice({
 
 export const {
   onUserStatusUpdate,
+  hydrateFriendStatuses,
   clearFriendState
 } = friendSlice.actions;
 

@@ -1,0 +1,249 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.movie-watch-skeleton {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: var(--w-spacing-lg);
+    padding: 0 var(--w-spacing-lg);
+    max-width: var(--w-max-width);
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-top: var(--w-spacing-lg);
+
+    @include breakpoint(tablet-and-below) {
+        grid-template-columns: 1fr;
+        padding: var(--w-spacing-md);
+        padding-top: calc(var(--w-header-height-mobile) + var(--w-spacing-md));
+    }
+
+    @include breakpoint(tv) {
+        grid-template-columns: 1fr 450px;
+        gap: var(--w-spacing-tv-lg);
+        padding: var(--w-spacing-tv-lg);
+        max-width: 100%;
+    }
+
+    &__main-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--w-spacing-lg);
+        min-width: 0;
+    }
+
+    // Player
+    &__player {
+        width: 100%;
+        aspect-ratio: 16/9;
+        border-radius: var(--w-border-radius-lg);
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+    }
+
+    // Info
+    &__info {
+        display: flex;
+        gap: var(--w-spacing-lg);
+
+        @include breakpoint(mobile) {
+            flex-direction: column;
+            gap: var(--w-spacing-md);
+        }
+    }
+
+    &__poster {
+        width: 180px;
+        aspect-ratio: 2/3;
+        flex-shrink: 0;
+        border-radius: var(--w-border-radius-md);
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+
+        @include breakpoint(mobile) {
+            display: none;
+        }
+    }
+
+    &__details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--w-spacing-md);
+    }
+
+    &__title {
+        height: 32px;
+        width: 70%;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+
+    &__subtitle {
+        height: 20px;
+        width: 40%;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+
+    &__meta-row {
+        display: flex;
+        gap: var(--w-spacing-sm);
+    }
+
+    &__badge {
+        width: 60px;
+        height: 24px;
+        background-color: var(--w-background-color-dark);
+        border-radius: 4px;
+        @include shimmer-animation;
+    }
+
+    &__actions {
+        display: flex;
+        gap: var(--w-spacing-md);
+        margin-top: var(--w-spacing-sm);
+    }
+
+    &__btn {
+        width: 120px;
+        height: 40px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius-md);
+        @include shimmer-animation;
+    }
+
+    &__genres {
+        display: flex;
+        gap: 8px;
+        margin-top: var(--w-spacing-sm);
+    }
+
+    &__genre {
+        width: 80px;
+        height: 24px;
+        background-color: var(--w-background-color-dark);
+        border-radius: 20px;
+        @include shimmer-animation;
+    }
+
+    // Episodes
+    &__episodes {
+        margin-top: var(--w-spacing-md);
+    }
+
+    &__section-title {
+        width: 150px;
+        height: 24px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        margin-bottom: var(--w-spacing-md);
+        @include shimmer-animation;
+    }
+
+    &__episode-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+
+        @include breakpoint(mobile) {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        }
+    }
+
+    &__episode-card {
+        height: 40px;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius-md);
+        @include shimmer-animation;
+    }
+
+    // Meta Panel
+    &__meta-panel {
+        padding: var(--w-spacing-lg);
+        border-radius: var(--w-border-radius-lg);
+        background-color: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    &__tags {
+        display: flex;
+        gap: var(--w-spacing-sm);
+        margin-bottom: var(--w-spacing-md);
+    }
+
+    &__tag {
+        width: 100px;
+        height: 24px;
+        background-color: var(--w-background-color-dark);
+        border-radius: 20px;
+        @include shimmer-animation;
+    }
+
+    &__text-line {
+        height: 16px;
+        width: 100%;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        margin-bottom: 8px;
+        @include shimmer-animation;
+    }
+
+    // Sidebar
+    &__sidebar {
+        padding: var(--w-spacing-md);
+        border-radius: var(--w-border-radius-lg);
+        background-color: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        height: fit-content;
+
+        @include breakpoint(tablet-and-below) {
+            display: none;
+        }
+    }
+
+    &__recommended-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    &__recommended-card {
+        display: flex;
+        gap: 12px;
+    }
+
+    &__card-poster {
+        width: 70px;
+        height: 100px;
+        flex-shrink: 0;
+        border-radius: 6px;
+        background-color: var(--w-background-color-dark);
+        @include shimmer-animation;
+    }
+
+    &__card-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    &__card-title {
+        height: 16px;
+        width: 90%;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+
+    &__card-subtitle {
+        height: 12px;
+        width: 60%;
+        background-color: var(--w-background-color-dark);
+        border-radius: var(--w-border-radius);
+        @include shimmer-animation;
+    }
+}

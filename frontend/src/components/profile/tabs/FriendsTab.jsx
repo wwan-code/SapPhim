@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import classNames from '@/utils/classNames';
-import { useFriendStore } from '@/stores/useFriendStore';
+import { useFriendStore } from '@/hooks/stores/useFriendStore';
 import FriendList from '@/components/friends/FriendList';
 import FriendRequestList from '@/components/friends/FriendRequestList';
 import FriendSearch from '@/components/friends/FriendSearch';
@@ -8,7 +8,7 @@ import '@/assets/scss/components/friends/_friends-tab.scss';
 
 const FriendsTab = ({ user, isOwnProfile = true }) => {
   const { activeTab, setActiveTab } = useFriendStore();
-  
+
   const tabsContainerRef = useRef(null);
   const tabRefs = useRef({});
   const [indicatorStyle, setIndicatorStyle] = useState({ top: 0, left: 0, width: 0, height: 0, opacity: 0 });
@@ -32,20 +32,20 @@ const FriendsTab = ({ user, isOwnProfile = true }) => {
 
       if (!activeTabElement || !containerElement) return;
 
-        const tabHeight = activeTabElement.offsetHeight;
-        const tabOffsetLeft = activeTabElement.offsetLeft;
-        setIndicatorStyle({
-          left: tabOffsetLeft,
-          width: activeTabElement.offsetWidth,
-          height: tabHeight,
-          opacity: 1,
-        });
+      const tabHeight = activeTabElement.offsetHeight;
+      const tabOffsetLeft = activeTabElement.offsetLeft;
+      setIndicatorStyle({
+        left: tabOffsetLeft,
+        width: activeTabElement.offsetWidth,
+        height: tabHeight,
+        opacity: 1,
+      });
     };
 
     updateIndicator();
     const timer1 = setTimeout(updateIndicator, 50);
     const timer2 = setTimeout(updateIndicator, 150);
-    
+
     const handleResize = () => {
       requestAnimationFrame(updateIndicator);
     };
@@ -94,7 +94,7 @@ const FriendsTab = ({ user, isOwnProfile = true }) => {
   return (
     <div className="friends-tab">
       <nav className="friends-tab__header">
-        <ul 
+        <ul
           ref={tabsContainerRef}
           className={classNames('friends-tab__nav', {
             'friends-tab__nav--warping': tabShellState === 'warping',
@@ -115,14 +115,14 @@ const FriendsTab = ({ user, isOwnProfile = true }) => {
 
           {subTabs.map((tab) => {
             const isActive = activeTab === tab.id;
-            
+
             return (
               <li
                 key={tab.id}
                 role="tab"
                 ref={(el) => (tabRefs.current[tab.id] = el)}
-                className={classNames('friends-tab__nav-item', { 
-                  'is-active': isActive 
+                className={classNames('friends-tab__nav-item', {
+                  'is-active': isActive
                 })}
                 onClick={() => handleTabClick(tab.id)}
                 aria-selected={isActive}
@@ -137,7 +137,7 @@ const FriendsTab = ({ user, isOwnProfile = true }) => {
         </ul>
       </nav>
 
-      <div 
+      <div
         className="friends-tab__content"
         role="tabpanel"
         id={`${activeTab}-panel`}

@@ -24,9 +24,9 @@ const getFriends = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { q, page = 1, limit = 10 } = req.query;
   const result = await friendService.getFriends(
-    userId, 
-    q, 
-    parseInt(page), 
+    userId,
+    q,
+    parseInt(page),
     parseInt(limit)
   );
   res.status(200).json({
@@ -44,8 +44,8 @@ const getPendingFriendRequests = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { page = 1, limit = 10 } = req.query;
   const result = await friendService.getPendingFriendRequests(
-    userId, 
-    parseInt(page), 
+    userId,
+    parseInt(page),
     parseInt(limit)
   );
   res.status(200).json({
@@ -63,8 +63,8 @@ const getSentFriendRequests = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { page = 1, limit = 10 } = req.query;
   const result = await friendService.getSentFriendRequests(
-    userId, 
-    parseInt(page), 
+    userId,
+    parseInt(page),
     parseInt(limit)
   );
   res.status(200).json({
@@ -102,6 +102,22 @@ const rejectFriendRequest = asyncHandler(async (req, res) => {
   res.status(200).json({
     data: friendship,
     message: 'Lời mời kết bạn đã bị từ chối.',
+    errors: null,
+    meta: null,
+  });
+});
+
+// @desc    Hủy lời mời kết bạn đã gửi
+// @route   POST /api/friends/cancel/:requestId
+// @access  Private
+const cancelFriendRequest = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const requestId = parseInt(req.params.requestId);
+
+  await friendService.cancelFriendRequest(userId, requestId);
+  res.status(200).json({
+    data: null,
+    message: 'Đã hủy lời mời kết bạn thành công.',
     errors: null,
     meta: null,
   });
@@ -154,6 +170,7 @@ export {
   getSentFriendRequests,
   acceptFriendRequest,
   rejectFriendRequest,
+  cancelFriendRequest,
   removeFriend,
   searchUsers,
 };

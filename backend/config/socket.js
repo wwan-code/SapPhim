@@ -1,23 +1,142 @@
+// ============================================================================
+// socket.js - SERVER SIDE - IMPROVED RATE LIMITING & CONNECTION HANDLING
+// ============================================================================
+
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import db from '../models/index.js';
 import { Op } from 'sequelize';
 import * as NotificationService from '../services/notification.service.js';
-import redisClient, { redisHelpers } from './redis.js';
+import { redisHelpers, redisPoolManager } from './redis.js';
+import {
+  registerConnection,
+  unregisterConnection,
+  touchConnection,
+  pruneStaleConnections
+} from '../services/presence.service.js';
+import {
+  registerWatchPartyHandlers,
+  setupWatchPartyRedisPubSub,
+  cleanupWatchParty,
+  WATCH_PARTY_CHANNELS
+} from '../sockets/watchParty.socket.js';
 
 const { User, Friendship } = db;
 
 let ioInstance;
 const connectedUsers = new Map();
 const userSockets = new Map();
-let redisSubscriber = null; // Track subscriber for cleanup
+let redisSubscriber = null;
+let cleanupInterval = null;
 
+// ============================================================================
+// IMPROVED CONNECTION MANAGEMENT
+// ============================================================================
+const MAX_CONCURRENT_CONNECTIONS = process.env.NODE_ENV === 'production'
+  ? (parseInt(process.env.SOCKET_MAX_CONNECTIONS, 10) || 10000)
+  : 1000;
+const MAX_CONNECTIONS_PER_USER = 5;
+let currentConnectionCount = 0;
+
+// ============================================================================
+// IMPROVED RATE LIMITING CONFIG
+// ============================================================================
+const RATE_LIMIT_CONFIG = {
+  // Per IP: Allow 10 connections per 60s window (was 50!)
+  perIp: {
+    limit: 10,
+    window: 60,  // seconds
+  },
+  // Per user: Allow 3 concurrent connections (was 5, but combined with per-IP = too many)
+  perUser: {
+    maxConcurrent: 3,
+  },
+  // Track failed attempts to detect attacks
+  failedAttempts: {
+    limit: 5,
+    window: 300,  // 5 minutes
+    blockDuration: 600,  // Block for 10 minutes
+  },
+};
+
+// ============================================================================
+// REDIS CHANNELS
+// ============================================================================
 export const REDIS_CHANNELS = {
   USER_STATUS: 'user:status',
   NOTIFICATION: 'user:notification',
   COMMENT: 'comment:update',
   FRIEND_REQUEST: 'friend:request',
   FRIENDSHIP_UPDATE: 'friendship:update',
+  ...WATCH_PARTY_CHANNELS,
+};
+
+// ============================================================================
+// RATE LIMIT HELPER - More sophisticated
+// ============================================================================
+const getRateLimitKey = (type, identifier) => `ratelimit:${type}:${identifier}`;
+const getFailedAttemptsKey = (ip) => `failed_attempts:${ip}`;
+const getBlockedIpKey = (ip) => `blocked_ip:${ip}`;
+
+/**
+ * Check and increment rate limit counter
+ */
+const checkRateLimit = async (ip) => {
+  const key = getRateLimitKey('connection', ip);
+  const failedKey = getFailedAttemptsKey(ip);
+  const blockedKey = getBlockedIpKey(ip);
+
+  try {
+    // Check if IP is temporarily blocked
+    const isBlocked = await redisHelpers.safeGet(blockedKey);
+    if (isBlocked) {
+      return {
+        allowed: false,
+        reason: 'IP temporarily blocked due to too many failed attempts',
+        retryAfter: 600,
+      };
+    }
+
+    // Check per-IP connection limit
+    const count = await redisHelpers.safeIncr(key, RATE_LIMIT_CONFIG.perIp.window);
+
+    if (count > RATE_LIMIT_CONFIG.perIp.limit) {
+      // Increment failed attempts
+      const failedCount = await redisHelpers.safeIncr(
+        failedKey,
+        RATE_LIMIT_CONFIG.failedAttempts.window
+      );
+
+      if (failedCount >= RATE_LIMIT_CONFIG.failedAttempts.limit) {
+        // Block this IP temporarily
+        await redisHelpers.safeSet(
+          blockedKey,
+          true,
+          RATE_LIMIT_CONFIG.failedAttempts.blockDuration
+        );
+
+        console.warn(`⛔ IP ${ip} blocked for too many failed connection attempts`);
+
+        return {
+          allowed: false,
+          reason: 'Too many connection attempts. IP temporarily blocked.',
+          retryAfter: RATE_LIMIT_CONFIG.failedAttempts.blockDuration,
+        };
+      }
+
+      return {
+        allowed: false,
+        reason: `Too many connection attempts from IP: ${count}/${RATE_LIMIT_CONFIG.perIp.limit}`,
+        retryAfter: RATE_LIMIT_CONFIG.perIp.window,
+      };
+    }
+
+    return { allowed: true };
+  } catch (error) {
+    console.error('Rate limit check error:', error);
+    // On Redis error, allow connection to fail gracefully later
+    return { allowed: true };
+  }
 };
 
 /**
@@ -25,15 +144,23 @@ export const REDIS_CHANNELS = {
  */
 const verifySocketToken = (socket, next) => {
   const token = socket.handshake.auth?.token;
+
   if (!token) {
-    return next(new Error('Authentication error: No token provided'));
+    const error = new Error('Authentication error: No token provided');
+    error.data = { content: 'No token' };
+    return next(error);
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      return next(new Error('Authentication error: Invalid token'));
+      console.warn(`[Socket] JWT verification failed:`, err.message);
+      const error = new Error('Authentication error: Invalid or expired token');
+      error.data = { content: err.message };
+      return next(error);
     }
+
     socket.userId = decoded.id;
+    socket.userEmail = decoded.email; // Optional: store for debugging
     next();
   });
 };
@@ -68,7 +195,7 @@ const createBatchEmitter = () => {
     batches.get(room).push({ event: eventName, data, timestamp: Date.now() });
 
     if (!timeoutId) {
-      timeoutId = setTimeout(flush, 50);
+      timeoutId = setTimeout(flush, 150);
     }
   };
 
@@ -93,7 +220,6 @@ const FRIEND_IDS_CACHE_KEY = (userId) => `friends:${userId}`;
 const invalidateFriendIdsCache = async (userId) => {
   const cacheKey = FRIEND_IDS_CACHE_KEY(userId);
   await redisHelpers.safeDel(cacheKey);
-  console.log(`Redis cache for friend IDs of user ${userId} invalidated.`);
 };
 
 const getFriendIds = async (userId) => {
@@ -119,31 +245,57 @@ const getFriendIds = async (userId) => {
   );
 };
 
+const normalizeLastOnline = (value) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const buildStatusPayloads = async (userId, online, lastOnlineIso) => {
+  try {
+    const user = await User.findByPk(userId, { attributes: ['showOnlineStatus'] });
+    const isHidden = user ? !user.showOnlineStatus : false;
+
+    return {
+      selfPayload: { userId, online, lastOnline: lastOnlineIso, hidden: false },
+      publicPayload: isHidden
+        ? { userId, online: false, lastOnline: null, hidden: true }
+        : { userId, online, lastOnline: lastOnlineIso, hidden: false },
+    };
+  } catch (error) {
+    console.error(`Error preparing status payload for user ${userId}:`, error);
+    return {
+      selfPayload: { userId, online, lastOnline: lastOnlineIso, hidden: false },
+      publicPayload: { userId, online, lastOnline: lastOnlineIso, hidden: false },
+    };
+  }
+};
+
 /**
  * Broadcast user status with error handling
  */
 const broadcastUserStatus = async (userId, online, lastOnline = null) => {
   try {
     const friendIds = await getFriendIds(userId);
-    const statusUpdate = { userId, online, lastOnline };
+    const isoValue = normalizeLastOnline(lastOnline);
+    const { selfPayload, publicPayload } = await buildStatusPayloads(userId, online, isoValue);
 
-    // Emit to user's own room
-    if (ioInstance) {
-      ioInstance.to(`user_${userId}`).emit('user_status_update', statusUpdate);
+    const publishToSocket = () => {
+      if (!ioInstance) return;
 
-      // Emit to friends using batch emitter
-      friendIds.forEach(friendId => {
-        batchEmitter.emit(`user_${friendId}`, 'user_status_update', statusUpdate);
+      ioInstance.to(`user_${userId}`).emit('user_status_update', selfPayload);
+      friendIds.forEach((friendId) => {
+        batchEmitter.emit(`user_${friendId}`, 'user_status_update', publicPayload);
       });
-    }
+    };
 
-    // Publish to Redis for multi-server sync
-    if (redisClient.status === 'ready') {
-      await redisClient.publish(
-        REDIS_CHANNELS.USER_STATUS,
-        JSON.stringify({ userId, online, lastOnline, friendIds })
-      );
-    }
+    publishToSocket();
+
+    // Publish to other instances via Redis
+    await redisHelpers.publish(
+      REDIS_CHANNELS.USER_STATUS,
+      { userId, payloads: { selfPayload, publicPayload }, friendIds }
+    );
   } catch (error) {
     console.error(`Error broadcasting status for user ${userId}:`, error);
   }
@@ -152,34 +304,18 @@ const broadcastUserStatus = async (userId, online, lastOnline = null) => {
 /**
  * Setup Redis subscriptions with proper error handling
  */
-const setupRedisSubscriptions = () => {
-  if (redisClient.status !== 'ready') {
-    console.warn('Redis not ready for subscriptions');
-    return;
-  }
-
+const setupRedisSubscriptions = async () => {
   try {
-    // Create subscriber client
-    redisSubscriber = redisClient.duplicate();
+    redisSubscriber = await redisPoolManager.getConnection('pubsub');
 
-    // Subscribe to all channels
+    if (!redisSubscriber) {
+      console.warn('❌ Could not acquire Redis connection for subscription');
+      return;
+    }
+
     const channels = Object.values(REDIS_CHANNELS);
 
-    redisSubscriber.connect()
-      .then(() => {
-        console.log('✅ Redis subscriber connected');
-        return redisSubscriber.subscribe(channels, (err) => {
-          if (err) {
-            console.error('Redis subscribe error:', err);
-          } else {
-            console.log(`✅ Subscribed to ${channels.length} Redis channels`);
-          }
-        });
-      })
-      .catch(err => console.error('Redis subscriber connection error:', err));
-
-    // Handle incoming messages
-    redisSubscriber.on('message', async (channel, message) => {
+    await redisSubscriber.subscribe(channels, (message, channel) => {
       if (!ioInstance) return;
 
       try {
@@ -189,30 +325,28 @@ const setupRedisSubscriptions = () => {
           case REDIS_CHANNELS.USER_STATUS:
             handleUserStatusUpdate(data);
             break;
-
           case REDIS_CHANNELS.FRIEND_REQUEST:
             handleFriendRequest(data);
             break;
-
           case REDIS_CHANNELS.FRIENDSHIP_UPDATE:
-            await handleFriendshipUpdate(data);
+            handleFriendshipUpdate(data);
             break;
-
           default:
-            console.log(`Unhandled channel: ${channel}`);
+            break;
         }
       } catch (error) {
         console.error(`Redis message handling error for channel ${channel}:`, error);
       }
     });
 
-    // Handle Redis subscriber errors
+    console.log(`✅ Subscribed to ${channels.length} Redis channels`);
+
     redisSubscriber.on('error', (err) => {
-      console.error('Redis subscriber error:', err);
+      console.error('❌ Redis subscriber error:', err);
     });
 
   } catch (error) {
-    console.error('Error setting up Redis subscriptions:', error);
+    console.error('❌ Error setting up Redis subscriptions:', error);
   }
 };
 
@@ -220,14 +354,18 @@ const setupRedisSubscriptions = () => {
  * Channel-specific message handlers
  */
 const handleUserStatusUpdate = (data) => {
-  const { userId, online, lastOnline, friendIds } = data;
-  friendIds.forEach(friendId => {
-    ioInstance.to(`user_${friendId}`).emit('user_status_update', {
-      userId,
-      online,
-      lastOnline,
+  const { userId, payloads, friendIds } = data;
+  if (!ioInstance) return;
+
+  if (payloads?.selfPayload) {
+    ioInstance.to(`user_${userId}`).emit('user_status_update', payloads.selfPayload);
+  }
+
+  if (Array.isArray(friendIds) && payloads?.publicPayload) {
+    friendIds.forEach((friendId) => {
+      ioInstance.to(`user_${friendId}`).emit('user_status_update', payloads.publicPayload);
     });
-  });
+  }
 };
 
 const handleFriendRequest = (data) => {
@@ -239,7 +377,6 @@ const handleFriendRequest = (data) => {
 const handleFriendshipUpdate = async (data) => {
   const { type, friendshipId, senderId, receiverId, friendOfSender, friendOfReceiver, friendId, userId, ...rest } = data;
 
-  // Invalidate caches
   await invalidateFriendIdsCache(senderId);
   await invalidateFriendIdsCache(receiverId);
 
@@ -258,7 +395,7 @@ const handleFriendshipUpdate = async (data) => {
 /**
  * Initialize Socket.IO with improved configuration
  */
-export const initSocket = (httpServer) => {
+export const initSocket = async (httpServer) => {
   ioInstance = new Server(httpServer, {
     cors: {
       origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -273,65 +410,96 @@ export const initSocket = (httpServer) => {
       maxDisconnectionDuration: 2 * 60 * 1000,
       skipMiddlewares: true,
     },
-    // Performance optimizations
     perMessageDeflate: false,
-    maxHttpBufferSize: 1e6, // 1MB
+    maxHttpBufferSize: 1e6,
   });
 
-  // Rate limiting middleware
+  // ============================================================================
+  // ✅ IMPROVED RATE LIMITING MIDDLEWARE
+  // ============================================================================
   ioInstance.use(async (socket, next) => {
     const ip = socket.handshake.address;
-    const key = `ratelimit:socket:${ip}`;
 
-    try {
-      if (redisClient.status === 'ready') {
-        const count = await redisClient.incr(key);
-        if (count === 1) {
-          await redisClient.expire(key, 60);
-        }
-        if (count > 50) {
-          return next(new Error('Too many connection attempts. Please try again later.'));
-        }
-      }
-      next();
-    } catch (error) {
-      console.error('Rate limit error:', error);
-      next(); // Allow connection on error
+    // Check global connection limit
+    if (currentConnectionCount >= MAX_CONCURRENT_CONNECTIONS) {
+      console.warn(`⛔ Global connection limit reached (${currentConnectionCount}/${MAX_CONCURRENT_CONNECTIONS})`);
+      return next(new Error('Server is at capacity. Please try again in a few moments.'));
     }
+
+    // Check per-IP rate limit
+    const rateLimitResult = await checkRateLimit(ip);
+    if (!rateLimitResult.allowed) {
+      console.warn(`⛔ Rate limit exceeded for IP ${ip}: ${rateLimitResult.reason}`);
+      const error = new Error(rateLimitResult.reason);
+      error.data = { retryAfter: rateLimitResult.retryAfter };
+      return next(error);
+    }
+
+    next();
   });
 
+  // ============================================================================
   // Authentication middleware
+  // ============================================================================
   ioInstance.use(verifySocketToken);
 
+  // ============================================================================
   // Connection handler
+  // ============================================================================
   ioInstance.on('connection', async (socket) => {
     const userId = socket.userId;
-    if (!userId) return;
+    const ip = socket.handshake.address;
 
+    if (!userId) {
+      console.warn(`❌ Socket ${socket.id} connected without userId`);
+      socket.disconnect(true);
+      return;
+    }
+
+    // ✅ Per-user connection limit
+    const userConnectionCount = userSockets.get(userId)?.size || 0;
+    if (userConnectionCount >= RATE_LIMIT_CONFIG.perUser.maxConcurrent) {
+      console.warn(`⛔ User ${userId} exceeded max connections (${userConnectionCount}/${RATE_LIMIT_CONFIG.perUser.maxConcurrent})`);
+      socket.emit('error', { message: 'Too many active sessions.' });
+      socket.disconnect(true);
+      return;
+    }
+
+    currentConnectionCount++;
     const userRoom = `user_${userId}`;
     socket.join(userRoom);
 
-    // Track multiple connections per user
     if (!userSockets.has(userId)) {
       userSockets.set(userId, new Set());
     }
     userSockets.get(userId).add(socket.id);
     connectedUsers.set(userId, socket.id);
 
-    console.log(`✅ User ${userId} connected (socket: ${socket.id})`);
+    console.log(`✅ User ${userId} connected from ${ip} (socket: ${socket.id})`);
 
-    // Set user online status
+    const connectionMeta = {
+      ip,
+      userAgent: socket.handshake.headers['user-agent'] || '',
+      device: socket.handshake.auth?.device || null,
+    };
+
     try {
-      await db.sequelize.transaction(async (t) => {
-        await User.update(
-          { online: true, lastOnline: null },
-          { where: { id: userId }, transaction: t }
-        );
-      });
+      const { isFirstConnection } = await registerConnection(userId, socket.id, connectionMeta);
 
-      await broadcastUserStatus(userId, true, null);
+      if (isFirstConnection) {
+        await db.sequelize.transaction(async (t) => {
+          await User.update(
+            { online: true, lastOnline: null },
+            { where: { id: userId }, transaction: t }
+          );
+        });
+
+        await broadcastUserStatus(userId, true, null);
+      } else {
+        socket.emit('user_status_update', { userId, online: true, lastOnline: null, hidden: false });
+      }
     } catch (error) {
-      console.error(`Error setting user ${userId} online:`, error);
+      console.error(`Error registering connection for user ${userId}:`, error);
     }
 
     // Notification subscription
@@ -357,45 +525,62 @@ export const initSocket = (httpServer) => {
 
     // Handle disconnect
     socket.on('disconnect', async (reason) => {
-      console.log(`User ${userId} disconnected (socket: ${socket.id}), reason: ${reason}`);
+      currentConnectionCount--;
+      console.log(`👋 User ${userId} disconnected (socket: ${socket.id}), reason: ${reason}`);
 
       const sockets = userSockets.get(userId);
       if (sockets) {
         sockets.delete(socket.id);
-
-        // Only set offline if no more connections
         if (sockets.size === 0) {
           userSockets.delete(userId);
           connectedUsers.delete(userId);
-
-          try {
-            await db.sequelize.transaction(async (t) => {
-              await User.update(
-                { online: false, lastOnline: new Date() },
-                { where: { id: userId }, transaction: t }
-              );
-            });
-
-            await broadcastUserStatus(userId, false, new Date());
-          } catch (error) {
-            console.error(`Error setting user ${userId} offline:`, error);
+        } else {
+          const [firstSocket] = sockets;
+          if (firstSocket) {
+            connectedUsers.set(userId, firstSocket);
           }
         }
+      } else {
+        connectedUsers.delete(userId);
+      }
+
+      try {
+        const { hasConnections } = await unregisterConnection(userId, socket.id);
+
+        if (!hasConnections) {
+          const offlineAt = new Date();
+          await db.sequelize.transaction(async (t) => {
+            await User.update(
+              { online: false, lastOnline: offlineAt },
+              { where: { id: userId }, transaction: t }
+            );
+          });
+
+          await broadcastUserStatus(userId, false, offlineAt);
+        }
+      } catch (error) {
+        console.error(`Error handling disconnect for user ${userId}:`, error);
       }
     });
 
     // Handle socket errors
     socket.on('error', (error) => {
-      console.error(`Socket error for user ${userId}:`, error);
+      console.error(`❌ Socket error for user ${userId}:`, error);
     });
+
+    // ==================== WATCH PARTY HANDLERS ====================
+    registerWatchPartyHandlers(socket);
   });
 
-  // Setup Redis subscriptions
   setupRedisSubscriptions();
 
+  // Setup Watch Party Redis Pub/Sub
+  await setupWatchPartyRedisPubSub(redisPoolManager);
+
+  // ============================================================================
   // Cleanup interval for stale connections
-  const cleanupInterval = setInterval(async () => {
-    console.log('🧹 Running stale connection cleanup...');
+  // ============================================================================
+  cleanupInterval = setInterval(async () => {
     const now = new Date();
     const usersToUpdateOffline = [];
 
@@ -405,11 +590,13 @@ export const initSocket = (httpServer) => {
         const socket = ioInstance.sockets.sockets.get(socketId);
         if (socket && socket.connected) {
           hasActiveConnection = true;
-          break;
+          await touchConnection(userId, socketId);
+        } else {
+          socketIds.delete(socketId);
         }
       }
 
-      if (!hasActiveConnection) {
+      if (!hasActiveConnection && socketIds.size === 0) {
         usersToUpdateOffline.push(userId);
         userSockets.delete(userId);
         connectedUsers.delete(userId);
@@ -424,49 +611,37 @@ export const initSocket = (httpServer) => {
             { where: { id: { [Op.in]: usersToUpdateOffline } }, transaction: t }
           );
         });
-        console.log(`✅ Updated ${usersToUpdateOffline.length} users to offline.`);
 
         for (const userId of usersToUpdateOffline) {
           await broadcastUserStatus(userId, false, now);
         }
       } catch (error) {
-        console.error('Error updating offline status for stale connections:', error);
-      }
-    }
-  }, 60 * 1000); // Run every 1 minute
-
-  // Cleanup on server shutdown
-  const cleanup = async () => {
-    console.log('🛑 Shutting down Socket.IO...');
-
-    // Clear cleanup interval
-    clearInterval(cleanupInterval);
-
-    // Flush any pending batch events
-    batchEmitter.flush();
-    batchEmitter.cleanup();
-
-    // Close Redis subscriber
-    if (redisSubscriber) {
-      try {
-        await redisSubscriber.unsubscribe();
-        await redisSubscriber.quit();
-        console.log('✅ Redis subscriber closed');
-      } catch (error) {
-        console.error('Error closing Redis subscriber:', error);
+        console.error('❌ Error updating offline status for stale connections:', error);
       }
     }
 
-    // Close all socket connections
-    if (ioInstance) {
-      ioInstance.close();
-      console.log('✅ Socket.IO server closed');
+    try {
+      const stalePresence = await pruneStaleConnections();
+      if (stalePresence.length > 0) {
+        for (const entry of stalePresence) {
+          const offlineDate = new Date(entry.disconnectedAt || Date.now());
+          try {
+            await db.sequelize.transaction(async (t) => {
+              await User.update(
+                { online: false, lastOnline: offlineDate },
+                { where: { id: entry.userId }, transaction: t }
+              );
+            });
+            await broadcastUserStatus(entry.userId, false, offlineDate);
+          } catch (error) {
+            console.error(`Error updating offline status for user ${entry.userId}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error during global presence pruning:', error);
     }
-  };
-
-  // Register cleanup handlers
-  process.on('SIGTERM', cleanup);
-  process.on('SIGINT', cleanup);
+  }, 60 * 1000);
 
   console.log("✅ Socket.IO initialized successfully");
   return ioInstance;
@@ -483,7 +658,7 @@ export const getIo = () => {
 };
 
 /**
- * Emit to specific user (supports multiple connections)
+ * Emit to specific user
  */
 export const emitToUser = (userId, event, data) => {
   if (!ioInstance) return;
@@ -505,4 +680,39 @@ export const emitToUsers = (userIds, event, data) => {
  */
 export const getOnlineUsers = (userIds) => {
   return userIds.filter(userId => connectedUsers.has(userId));
+};
+
+/**
+ * Graceful shutdown function
+ */
+export const shutdownSocket = async () => {
+  console.log('🛑 Shutting down Socket.IO...');
+
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+
+  batchEmitter.flush();
+  batchEmitter.cleanup();
+
+  // Cleanup Watch Party resources
+  await cleanupWatchParty();
+
+  if (redisSubscriber) {
+    try {
+      await redisSubscriber.unsubscribe();
+      await redisPoolManager.releaseConnection(redisSubscriber, 'pubsub');
+      redisSubscriber = null;
+      console.log('✅ Redis subscriber closed');
+    } catch (error) {
+      console.error('❌ Error closing Redis subscriber:', error);
+    }
+  }
+
+  if (ioInstance) {
+    ioInstance.close();
+    ioInstance = null;
+    console.log('✅ Socket.IO server closed');
+  }
 };

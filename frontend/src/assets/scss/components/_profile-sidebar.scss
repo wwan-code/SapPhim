@@ -85,6 +85,15 @@
     &--online {
       background-color: var(--w-online-color);
     }
+
+    &--offline {
+      background-color: var(--w-secondary-color);
+    }
+
+    &--hidden {
+      background-color: var(--w-warning-color);
+      box-shadow: 0 0 6px rgba(var(--w-warning-color-rgb), 0.4);
+    }
   }
 
   &__info {

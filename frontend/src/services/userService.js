@@ -79,6 +79,17 @@ const searchFriends = async (q, limit = 10) => {
   return res.data;
 };
 
+const getUsersPresence = async (ids = []) => {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { data: [] };
+  }
+
+  const params = new URLSearchParams();
+  params.append('ids', ids.join(','));
+  const res = await api.get(`/users/status/bulk?${params.toString()}`);
+  return res.data;
+};
+
 const userService = {
   getProfile,
   updateProfile,
@@ -93,6 +104,7 @@ const userService = {
   getUserFriendsByUuid,
   searchUsers,
   searchFriends,
+  getUsersPresence,
 };
 
 export default userService;

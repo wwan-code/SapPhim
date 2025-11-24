@@ -1,0 +1,151 @@
+@use './variables' as *;
+@use './mixins' as *;
+
+// =============================================================================
+// LIQUID GLASS TOASTIFY THEME
+// =============================================================================
+// Override hoàn toàn UI của React Toastify theo phong cách Liquid Glass iOS 26.
+// Sử dụng: import styles from './toastify.custom.module.scss' và truyền vào ToastContainer.
+
+// 1. Container
+.toastContainer {
+    padding: var(--w-spacing-md);
+    width: auto;
+    min-width: 320px;
+    max-width: 420px;
+    z-index: var(--w-zindex-toast);
+
+    @include breakpoint(mobile) {
+        width: 100%;
+        padding: var(--w-spacing-sm);
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+    }
+}
+
+// 2. Toast Wrapper (The Glass Card)
+.toast {
+    // Reset default styles
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-height: 64px !important;
+    border-radius: var(--w-border-radius-lg) !important;
+    margin-bottom: var(--w-spacing-md);
+    overflow: hidden !important; // Để hiển thị glow/shadow ra ngoài
+    font-family: var(--w-font-family-base);
+    cursor: pointer;
+
+    // Liquid Glass Effect
+    @include liquid-glass-complete($opacity: var(--w-glass-opacity-heavy),
+        $blur: var(--w-blur-md),
+        $depth: 'medium',
+        $add-highlight: true);
+
+    // Border override (tinh chỉnh cho toast)
+    border: 1px solid var(--w-glass-border-light);
+
+    // Motion
+    @include liquid-motion;
+
+    &:hover {
+        transform: translateY(-2px) scale(1.01);
+        box-shadow:
+            var(--w-glass-shadow-specular),
+            0 12px 40px rgba(0, 0, 0, 0.15);
+        z-index: 10;
+    }
+
+    // Type-specific styling (using global classes injected by Toastify)
+    &:global(.Toastify__toast--info) {
+        --toast-accent: var(--w-info-color);
+    }
+
+    &:global(.Toastify__toast--success) {
+        --toast-accent: var(--w-success-color);
+    }
+
+    &:global(.Toastify__toast--warning) {
+        --toast-accent: var(--w-warning-color);
+    }
+
+    &:global(.Toastify__toast--error) {
+        --toast-accent: var(--w-danger-color);
+    }
+
+    // Accent line indicator (bên trái)
+    &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        background-color: var(--toast-accent, var(--w-primary-color));
+        border-radius: 0 var(--w-border-radius-sm) var(--w-border-radius-sm) 0;
+        opacity: 0.8;
+        box-shadow: 0 0 8px var(--toast-accent, var(--w-primary-color));
+    }
+
+    // 5. Close Button Override
+    :global(.Toastify__close-button) {
+        color: var(--w-text-color-light) !important;
+        opacity: 0.4 !important;
+        padding: var(--w-spacing-xs) !important;
+        margin-right: var(--w-spacing-xs) !important;
+        align-self: center;
+        @include liquid-motion;
+
+        &:hover {
+            opacity: 1 !important;
+            transform: rotate(90deg);
+            background: rgba(var(--w-text-color-rgb), 0.05);
+            border-radius: 50%;
+        }
+
+        // Custom SVG icon size
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+    }
+}
+
+// 3. Toast Body
+.body {
+    padding: var(--w-spacing-md) var(--w-spacing-lg) var(--w-spacing-md) var(--w-spacing-xl) !important; // Left padding lớn hơn cho accent line
+    margin: 0 !important;
+    color: var(--w-text-color);
+    font-size: var(--w-font-size-sm);
+    font-weight: var(--w-font-weight-medium);
+    line-height: 1.5;
+    @include flex(row, flex-start, center);
+    gap: var(--w-spacing-sm);
+
+    // Icon styling override
+    :global(.Toastify__toast-icon) {
+        width: 20px;
+        margin-right: var(--w-spacing-sm);
+    }
+}
+
+// 4. Progress Bar
+.progressBar {
+    height: 3px !important;
+    bottom: 0 !important;
+    background: linear-gradient(90deg,
+            transparent,
+            var(--toast-accent, var(--w-primary-color))) !important;
+    opacity: 0.7;
+    border-radius: 0 0 var(--w-border-radius-lg) var(--w-border-radius-lg);
+    transform-origin: left;
+}
+
+// 6. Custom Icons (Optional - if we want to replace default icons via CSS)
+// Toastify allows injecting custom icons via props, but we can also style the default SVGs
+:global(.Toastify__toast-icon) {
+    svg {
+        fill: var(--toast-accent, var(--w-primary-color));
+    }
+}

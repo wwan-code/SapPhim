@@ -29,4 +29,4 @@ const MovieMeta = ({ movie }) => {
   );
 };
 
-export default MovieMeta;
+export default React.memo(MovieMeta);

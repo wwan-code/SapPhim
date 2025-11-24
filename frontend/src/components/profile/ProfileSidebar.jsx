@@ -62,8 +62,12 @@ const ProfileSidebar = ({ user: propUser, activeTab, setActiveTab, isOwnProfile 
 
   const statusText = useMemo(() => {
     if (!user) return '';
+    const hiddenStatus = user.hidden && !isOwnProfile;
+    if (hiddenStatus) {
+      return 'Người dùng đã ẩn trạng thái online.';
+    }
     return user.online ? 'Online' : `Offline — lần cuối ${user.lastOnline ? formatDistanceToNow(user.lastOnline) : 'không rõ'}`;
-  }, [user]);
+  }, [user, isOwnProfile]);
 
   return (
     <aside className="profile-sidebar">
@@ -83,6 +87,7 @@ const ProfileSidebar = ({ user: propUser, activeTab, setActiveTab, isOwnProfile 
               className={classNames('profile-sidebar__status', {
                 'profile-sidebar__status--online': user?.online,
                 'profile-sidebar__status--offline': !user?.online,
+                'profile-sidebar__status--hidden': user?.hidden && !isOwnProfile,
               })}
               title={statusText}
             ></span>

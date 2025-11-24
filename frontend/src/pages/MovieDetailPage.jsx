@@ -1,70 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import movieService from '@/services/movieService';
 import favoriteService from '@/services/favoriteService';
 import { toast } from 'react-toastify';
 import MovieCard from '@/components/MovieCard';
 import '@/assets/scss/pages/_movie-detail-page.scss';
 import { FaStar } from 'react-icons/fa';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import MovieDetailSkeleton from '@/components/skeletons/MovieDetailSkeleton';
 import ErrorMessage from '@/components/common/ErrorMessage';
 import { useSelector } from 'react-redux';
 import CommentSection from '@/components/comments/CommentSection';
+import { useGetMovieDetail, useGetSimilarMovies, useGetMoviesInSameSeries } from '@/hooks/useMovieQueries';
 
 const MovieDetailPage = () => {
   const { slug } = useParams();
   const { user: currentUser } = useSelector((state) => state.auth);
-  const [movieId, setMovieId] = useState(null);
-  const [movie, setMovie] = useState(null);
-  const [similarMovies, setSimilarMovies] = useState([]);
-  const [seriesMovies, setSeriesMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+  // Main movie data query
+  const {
+    data: movie,
+    isLoading: loading,
+    error: queryError,
+    refetch
+  } = useGetMovieDetail(slug);
+
+  // Derived state
+  const movieId = movie?.id;
   const [isFavorite, setIsFavorite] = useState(false);
   const [favAnimating, setFavAnimating] = useState(false);
 
+  // Sync favorite state when movie data loads
   useEffect(() => {
-    const fetchMovieDetails = async () => {
-      try {
-        setLoading(true);
-        const response = await movieService.getMovieDetailBySlug(slug); // Use new API
-        if (response.success) {
-          setMovie(response.data);
-          setMovieId(response.data.id);
-          setIsFavorite(response.data.isFavorite); // Set isFavorite directly from API response
-
-          // Fetch similar movies
-          const similarResponse = await movieService.getSimilarMovies(response.data.id, { limit: 6 });
-          if (similarResponse.success) {
-            setSimilarMovies(similarResponse.data);
-          } else {
-            console.warn('Could not fetch similar movies.');
-          }
-
-          // Fetch movies in the same series
-          if (response.data.seriesId) { // Only fetch if it belongs to a series
-            const seriesResponse = await movieService.getMoviesInSameSeries(response.data.id, { limit: 6 });
-            if (seriesResponse.success) {
-              setSeriesMovies(seriesResponse.data);
-            } else {
-              console.warn('Could not fetch movies in the same series.');
-            }
-          }
-        } else {
-          setError('Movie not found.');
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Failed to fetch movie details.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (slug) {
-      fetchMovieDetails();
+    if (movie) {
+      setIsFavorite(movie.isFavorite);
     }
-  }, [slug, currentUser]); // Add currentUser to dependency array to re-fetch if login status changes
+  }, [movie]);
+
+  // Auxiliary queries
+  const { data: similarMovies = [] } = useGetSimilarMovies(movieId);
+  const { data: seriesMovies = [] } = useGetMoviesInSameSeries(movie?.seriesId ? movieId : null);
 
   const getImageUrl = (type = 'posterUrl') => {
     if (!movie || !movie.image || !movie.image[type]) {
@@ -120,17 +94,17 @@ const MovieDetailPage = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner fullscreen label="Đang tải chi tiết phim..." />;
+    return <MovieDetailSkeleton />;
   }
 
-  if (error) {
+  if (queryError) {
     return (
       <div className="container page-container">
         <ErrorMessage
           variant="card"
           title="Không thể tải chi tiết phim"
-          message={error}
-          onRetry={() => window.location.reload()}
+          message={queryError.message || 'Lỗi không xác định'}
+          onRetry={refetch}
         />
       </div>
     );
@@ -279,7 +253,7 @@ const MovieDetailPage = () => {
             </div>
           </section>
         )}
-        
+
         {movie && movieId && (
           <CommentSection
             contentType="movie"

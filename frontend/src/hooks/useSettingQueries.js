@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as settingService from '@/services/settingService';
-import useSettingStore from '@/stores/useSettingStore';
+import useSettingStore from '@/hooks/stores/useSettingStore';
 import { toast } from 'react-toastify';
 
 /**

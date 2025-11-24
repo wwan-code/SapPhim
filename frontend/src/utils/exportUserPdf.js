@@ -71,22 +71,22 @@ const loadImageAsBase64 = (url) => {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
-    
+
     const timeout = setTimeout(() => {
       console.warn('Image load timeout:', url);
       resolve(null);
     }, 5000);
-    
+
     img.onload = () => {
       clearTimeout(timeout);
       try {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        
+
         const dataURL = canvas.toDataURL('image/jpeg', 0.85);
         resolve(dataURL);
       } catch (error) {
@@ -94,13 +94,13 @@ const loadImageAsBase64 = (url) => {
         resolve(null);
       }
     };
-    
+
     img.onerror = () => {
       clearTimeout(timeout);
       console.error('Failed to load image:', url);
       resolve(null);
     };
-    
+
     img.src = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
   });
 };
@@ -114,15 +114,15 @@ const loadFontAsBase64 = async (url) => {
     if (!response.ok) {
       throw new Error(`Failed to load font: ${url}`);
     }
-    
+
     const buffer = await response.arrayBuffer();
     const bytes = new Uint8Array(buffer);
     let binary = '';
-    
+
     for (let i = 0; i < bytes.byteLength; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
-    
+
     return window.btoa(binary);
   } catch (error) {
     console.error('Font loading error:', error);
@@ -205,13 +205,13 @@ class PDFBuilder {
     // Compact header background
     this.doc.setFillColor(...COLORS.primaryLight);
     this.doc.rect(0, 0, this.pageWidth, LAYOUT.headerHeight, 'F');
-    
+
     // Title
     this.doc.setTextColor(...COLORS.text);
     this.doc.setFontSize(FONTS.size.title);
     this.doc.setFont('Roboto', 'bold');
     this.addText('Thông tin Cá nhân', this.pageWidth / 2, 12, { align: 'center' });
-    
+
     this.yPosition = LAYOUT.headerHeight + 5;
   }
 
@@ -221,7 +221,7 @@ class PDFBuilder {
 
   async addAvatar() {
     let avatarUrl = this.user.avatarUrl;
-    
+
     // Build full URL if needed
     if (avatarUrl && !avatarUrl.startsWith('http')) {
       avatarUrl = `${import.meta.env.VITE_SERVER_URL}${avatarUrl}`;
@@ -230,10 +230,10 @@ class PDFBuilder {
     }
 
     const avatarBase64 = await loadImageAsBase64(avatarUrl);
-    
+
     if (avatarBase64) {
       const x = this.pageWidth / 2 - LAYOUT.avatarSize / 2;
-      
+
       // Add avatar image
       this.doc.addImage(
         avatarBase64,
@@ -243,7 +243,7 @@ class PDFBuilder {
         LAYOUT.avatarSize,
         LAYOUT.avatarSize
       );
-      
+
       this.yPosition += LAYOUT.avatarSize + 5;
     } else {
       this.yPosition += LAYOUT.itemSpacing;
@@ -267,11 +267,19 @@ class PDFBuilder {
     // Online status
     this.doc.setFontSize(FONTS.size.small);
     this.doc.setFont('Roboto', 'normal');
-    const statusText = this.user.online ? '● Online' : '○ Offline';
-    const statusColor = this.user.online ? COLORS.success : COLORS.textLight;
+    let statusText = '○ Offline';
+    let statusColor = COLORS.textLight;
+
+    if (this.user.hidden) {
+      statusText = '◎ Đang ẩn trạng thái';
+      statusColor = COLORS.textLight;
+    } else if (this.user.online) {
+      statusText = '● Online';
+      statusColor = COLORS.success;
+    }
     this.doc.setTextColor(...statusColor);
     this.addText(statusText, this.pageWidth / 2, this.yPosition, { align: 'center' });
-    
+
     this.yPosition += 8;
   }
 
@@ -285,7 +293,7 @@ class PDFBuilder {
     this.doc.setFontSize(FONTS.size.sectionHeader);
     this.doc.setFont('Roboto', 'bold');
     this.addText(title, LAYOUT.margin, this.yPosition);
-    
+
     this.yPosition += 6;
   }
 
@@ -295,22 +303,22 @@ class PDFBuilder {
 
   addInfoRow(label, value, options = {}) {
     const { bold = false, color = COLORS.text, compact = false } = options;
-    
+
     this.doc.setFontSize(FONTS.size.body);
-    
+
     // Label
     this.doc.setFont('Roboto', 'bold');
     this.doc.setTextColor(...COLORS.textLight);
     this.addText(label + ':', LAYOUT.margin + 2, this.yPosition);
-    
+
     // Value (inline, no wrapping for compact view)
     this.doc.setFont('Roboto', bold ? 'bold' : 'normal');
     this.doc.setTextColor(...color);
-    
+
     const maxWidth = this.pageWidth - LAYOUT.margin - 45;
     const encoded = encodeVietnamese(value);
     const lines = this.doc.splitTextToSize(encoded, maxWidth);
-    
+
     // Always try to keep on one line for compact view
     this.addText(lines[0], LAYOUT.margin + 40, this.yPosition);
     this.yPosition += LAYOUT.itemSpacing;
@@ -326,14 +334,14 @@ class PDFBuilder {
     const basicInfo = [
       { label: 'Email', value: this.user.email || 'N/A' },
       { label: 'SĐT', value: this.user.phoneNumber || 'Chưa cập nhật' },
-      { 
-        label: 'Giới tính', 
-        value: this.user.sex === 'nam' ? 'Nam' : 
-               this.user.sex === 'nữ' ? 'Nữ' : 
-               this.user.sex === 'khác' ? 'Khác' : 'Chưa cập nhật' 
+      {
+        label: 'Giới tính',
+        value: this.user.sex === 'nam' ? 'Nam' :
+          this.user.sex === 'nữ' ? 'Nữ' :
+            this.user.sex === 'khác' ? 'Khác' : 'Chưa cập nhật'
       },
-      { 
-        label: 'Trạng thái', 
+      {
+        label: 'Trạng thái',
         value: this.user.status === 'active' ? 'Hoạt động' : 'Bị cấm',
         bold: true,
         color: this.user.status === 'active' ? COLORS.success : COLORS.danger
@@ -346,6 +354,8 @@ class PDFBuilder {
       basicInfo.push({
         label: 'Ngày tạo',
         value: formatDate(this.user.createdAt, 'vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
@@ -373,7 +383,7 @@ class PDFBuilder {
     this.addSectionHeader('Tiểu sử');
 
     const bioText = stripHtmlTags(this.user.bio);
-    
+
     this.doc.setTextColor(...COLORS.text);
     this.doc.setFontSize(FONTS.size.small);
     this.doc.setFont('Roboto', 'normal');
@@ -382,7 +392,7 @@ class PDFBuilder {
     const maxWidth = this.pageWidth - 2 * LAYOUT.margin - 4;
     const lines = this.doc.splitTextToSize(encodeVietnamese(bioText), maxWidth);
     const displayLines = lines.slice(0, 3);
-    
+
     this.doc.text(displayLines, LAYOUT.margin + 2, this.yPosition);
     this.yPosition += displayLines.length * 3 + LAYOUT.lineSpacing;
   }
@@ -443,7 +453,7 @@ class PDFBuilder {
 
     const socialLabels = {
       github: 'GitHub',
-      twitter: 'Twitter', 
+      twitter: 'Twitter',
       instagram: 'Instagram',
       facebook: 'Facebook',
     };
@@ -458,12 +468,12 @@ class PDFBuilder {
 
         this.doc.setFont('Roboto', 'normal');
         this.doc.setTextColor(...COLORS.link);
-        
+
         // Truncate long URLs
         const maxLen = 35;
         const displayValue = value.length > maxLen ? value.substring(0, maxLen) + '...' : value;
         this.addText(displayValue, LAYOUT.margin + 30, this.yPosition);
-        
+
         this.doc.setTextColor(...COLORS.text);
         this.yPosition += LAYOUT.itemSpacing;
       }
@@ -476,11 +486,11 @@ class PDFBuilder {
 
   addFooter() {
     const footerY = this.pageHeight - 15;
-    
+
     this.doc.setFontSize(FONTS.size.footer);
     this.doc.setTextColor(...COLORS.footerText);
     this.doc.setFont('Roboto', 'italic');
-    
+
     const footerText = `Xuất ngày ${formatDate(new Date(), 'vi-VN', {
       day: '2-digit',
       month: '2-digit',
@@ -488,9 +498,9 @@ class PDFBuilder {
       hour: '2-digit',
       minute: '2-digit',
     })}`;
-    
+
     this.addText(footerText, this.pageWidth / 2, footerY, { align: 'center' });
-    
+
     // Add page number
     this.doc.setFontSize(FONTS.size.small);
     this.addText(

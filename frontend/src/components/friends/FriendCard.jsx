@@ -6,6 +6,7 @@ import {
   useSendFriendRequest,
   useAcceptFriendRequest,
   useRejectFriendRequest,
+  useCancelFriendRequest,
   useRemoveFriend,
 } from '@/hooks/useFriendQueries';
 import { FaUserPlus, FaCheck, FaTimes, FaUserMinus, FaHourglassHalf, FaCommentDots } from 'react-icons/fa';
@@ -16,15 +17,17 @@ import '@/assets/scss/components/friends/_friend-card.scss';
 const FriendCard = ({ user, type }) => {
   const navigate = useNavigate();
   const currentUser = useSelector((state) => state.auth.user);
+  const friendStatus = useSelector((state) => state.friends.friendStatuses[user.id]);
   const [isHovered, setIsHovered] = useState(false);
 
   // Sử dụng các mutation hooks từ React Query
   const { mutate: sendRequest, isPending: isSending } = useSendFriendRequest();
   const { mutate: acceptRequest, isPending: isAccepting } = useAcceptFriendRequest();
   const { mutate: rejectRequest, isPending: isRejecting } = useRejectFriendRequest();
+  const { mutate: cancelRequest, isPending: isCancelling } = useCancelFriendRequest();
   const { mutate: removeFriend, isPending: isRemoving } = useRemoveFriend();
 
-  const isLoading = isSending || isAccepting || isRejecting || isRemoving;
+  const isLoading = isSending || isAccepting || isRejecting || isRemoving || isCancelling;
 
   // Xử lý click vào username để điều hướng đến profile
   const handleUsernameClick = (e) => {
@@ -47,13 +50,18 @@ const FriendCard = ({ user, type }) => {
     rejectRequest(user.friendshipId); // user.friendshipId sẽ là id của lời mời
   };
 
+
+
+  const handleCancelRequest = () => {
+    cancelRequest(user.friendshipId);
+  };
+
   const handleRemoveFriend = () => {
     removeFriend(user.id);
   };
 
-
   const handleStartChat = () => {
-    
+
   };
 
   const renderActions = () => {
@@ -98,11 +106,12 @@ const FriendCard = ({ user, type }) => {
         } else if (type === 'sent') { // Người dùng hiện tại là sender
           return (
             <button
-              className="friend-card__action-btn friend-card__action-btn--pending"
-              disabled
-              title="Đang chờ phản hồi"
+              className="friend-card__action-btn friend-card__action-btn--reject"
+              onClick={handleCancelRequest}
+              disabled={isLoading}
+              title="Hủy lời mời"
             >
-              <FaHourglassHalf />
+              <FaTimes /> Hủy lời mời
             </button>
           );
         }
@@ -155,8 +164,22 @@ const FriendCard = ({ user, type }) => {
     }
   };
 
+  const baseHidden = !!user.hidden;
+  const baseOnline = baseHidden ? false : !!user.online;
+  const baseLastOnline = baseHidden ? null : user.lastOnline;
+
+  const hiddenStatus = friendStatus?.hidden ?? baseHidden;
+  const effectiveOnline = hiddenStatus ? false : (friendStatus?.online ?? baseOnline);
+  const effectiveLastOnline = hiddenStatus ? null : (friendStatus?.lastOnline ?? baseLastOnline);
+
+  const statusTitle = hiddenStatus
+    ? 'Người dùng đã ẩn trạng thái online.'
+    : effectiveOnline
+      ? 'Đang online'
+      : `Offline — lần cuối ${effectiveLastOnline ? formatDistanceToNow(effectiveLastOnline) : 'không rõ'}`;
+
   return (
-    <article 
+    <article
       className={classNames('friend-card', {
         'friend-card--hovered': isHovered,
         'friend-card--loading': isLoading,
@@ -165,32 +188,33 @@ const FriendCard = ({ user, type }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="friend-card__header">
-        <div 
+        <div
           className="friend-card__avatar-wrapper"
           onClick={handleUsernameClick}
           role="button"
           tabIndex={0}
           aria-label={`Xem trang cá nhân của ${user.username}`}
         >
-          <img 
-            src={getAvatarUrl(user)} 
-            alt={`${user.username}'s avatar`} 
-            className="friend-card__avatar" 
+          <img
+            src={getAvatarUrl(user)}
+            alt={`${user.username}'s avatar`}
+            className="friend-card__avatar"
             loading="lazy"
           />
-          <span 
+          <span
             className={classNames('friend-card__status-indicator', {
-              'friend-card__status-indicator--online': user.online,
-              'friend-card__status-indicator--offline': !user.online,
+              'friend-card__status-indicator--online': effectiveOnline,
+              'friend-card__status-indicator--offline': !effectiveOnline,
+              'friend-card__status-indicator--hidden': hiddenStatus,
             })}
-            title={user.online ? 'Đang online' : `Offline — lần cuối ${user.lastOnline ? formatDistanceToNow(user.lastOnline) : 'không rõ'}`}
-            aria-label={user.online ? 'Đang online' : 'Đang offline'}
+            title={statusTitle}
+            aria-label={hiddenStatus ? 'Đang ẩn trạng thái' : effectiveOnline ? 'Đang online' : 'Đang offline'}
           />
         </div>
-        
+
         <div className="friend-card__info">
-          <h3 
-            className="friend-card__username" 
+          <h3
+            className="friend-card__username"
             onClick={handleUsernameClick}
             title="Xem trang cá nhân"
           >
@@ -200,15 +224,15 @@ const FriendCard = ({ user, type }) => {
             <p className="friend-card__status-text">
               {
                 user.friendshipStatus === 'pending' ? 'Đang chờ' :
-                user.friendshipStatus === 'accepted' ? 'Bạn bè' :
-                user.friendshipStatus === 'rejected' ? 'Đã từ chối' :
-                user.friendshipStatus === 'cancelled' ? 'Đã hủy' : ''
+                  user.friendshipStatus === 'accepted' ? 'Bạn bè' :
+                    user.friendshipStatus === 'rejected' ? 'Đã từ chối' :
+                      user.friendshipStatus === 'cancelled' ? 'Đã hủy' : ''
               }
             </p>
           )}
         </div>
       </div>
-      
+
       {renderActions() && (
         <div className="friend-card__actions">
           {renderActions()}

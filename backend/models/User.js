@@ -180,7 +180,8 @@ const User = sequelize.define('User', {
   timestamps: true,
   indexes: [
     { fields: ['email'], unique: true },
-    { fields: ['username'] },
+    { fields: ['username'] }, // For search optimization
+    { fields: ['uuid'], unique: true },
   ],
 });
 

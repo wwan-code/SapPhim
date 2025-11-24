@@ -134,12 +134,39 @@ const deleteEpisode = async (id) => {
     if (!episode) {
       throw new Error('Episode not found');
     }
+
+    // Database CASCADE will automatically delete all WatchHistory records
+    // for this episode via Episode→WatchHistory association (onDelete: 'CASCADE')
     await episode.destroy({ transaction });
+
     await transaction.commit();
     return { message: 'Episode deleted successfully' };
   } catch (error) {
     if (transaction) await transaction.rollback();
     throw error;
+  }
+};
+
+const cleanupFailedUpload = async (id) => {
+  let transaction;
+  try {
+    transaction = await sequelize.transaction();
+    const episode = await Episode.findByPk(id, { transaction });
+
+    // Only delete if episode exists and status indicates incomplete upload
+    if (episode && (!episode.status || episode.status === 'pending' || episode.status === 'error')) {
+      await episode.destroy({ transaction });
+      await transaction.commit();
+      return { success: true, message: 'Cleaned up failed episode upload' };
+    }
+
+    await transaction.rollback();
+    return { success: false, message: 'Episode not found or status prevents cleanup' };
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    console.error('Error cleaning up failed upload:', error);
+    // Don't throw, just log - this is a cleanup task
+    return { success: false, error: error.message };
   }
 };
 
@@ -151,4 +178,5 @@ export {
   getEpisodeById,
   updateEpisode,
   deleteEpisode,
+  cleanupFailedUpload,
 };

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
-import movieService from '@/services/movieService';
+import { useGetTheaterMovies } from '@/hooks/useMovieQueries';
 import MovieTheaterCard from '@/components/MovieTheaterCard';
 import MovieTheaterCardSkeleton from '@/components/skeletons/MovieTheaterCardSkeleton';
 import 'swiper/css';
@@ -10,34 +10,15 @@ import classNames from '@/utils/classNames';
 import { Link } from 'react-router-dom';
 
 const MovieTheaterSection = () => {
-    const [movies, setMovies] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const { data: movies = [], isLoading: loading, error } = useGetTheaterMovies();
     const navigationPrevRef = useRef(null);
     const navigationNextRef = useRef(null);
     const [isBeginning, setIsBeginning] = useState(true);
     const [isEnd, setIsEnd] = useState(false);
 
-    useEffect(() => {
-        const fetchTopMovies = async () => {
-            try {
-                setLoading(true);
-                const response = await movieService.getTheaterMovies();
-                if (response.success && Array.isArray(response.data)) {
-                    setMovies(response.data);
-                } else {
-                    setError('Could not fetch theater movies.');
-                }
-            } catch (err) {
-                setError(err.message || 'An error occurred while fetching top movies.');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTopMovies();
-    }, []);
+    if (error) {
+        console.error('Error fetching theater movies:', error);
+    }
 
     const handleSlideChange = (swiper) => {
         setIsBeginning(swiper.isBeginning);

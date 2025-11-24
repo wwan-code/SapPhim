@@ -62,6 +62,15 @@ router.post(
   friendController.rejectFriendRequest
 );
 
+// Hủy lời mời kết bạn đã gửi
+router.post(
+  '/cancel/:requestId',
+  verifyToken,
+  // validateFriendshipAction, // Có thể tái sử dụng validation này nếu nó chỉ check ID hợp lệ
+  handleValidationErrors,
+  friendController.cancelFriendRequest
+);
+
 // Hủy kết bạn
 router.delete(
   '/remove/:friendId',

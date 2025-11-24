@@ -51,7 +51,7 @@ export const createNotification = async (notificationData) => {
     if (settingKey) {
       const userSettings = receiver.notificationSettings || {};
       const notifSetting = userSettings[settingKey];
-      
+
       // Chỉ kiểm tra in-app notification (hiện tại chỉ hỗ trợ in-app)
       if (!notifSetting || !notifSetting.inApp) {
         console.log(`NotificationService: User ${userId} đã tắt thông báo ${type}.`);
@@ -295,6 +295,42 @@ export const deleteNotification = async (notificationId, userId) => {
 };
 
 /**
+ * @desc Xóa thông báo kết bạn khi hủy lời mời.
+ * @param {number} friendshipId - ID của friendship.
+ * @param {number} receiverId - ID người nhận thông báo.
+ * @returns {Promise<boolean>} - True nếu xóa thành công.
+ */
+export const deleteNotificationByFriendship = async (friendshipId, receiverId) => {
+  try {
+    // Tìm thông báo friend_request có metadata chứa friendshipId
+    const notification = await Notification.findOne({
+      where: {
+        userId: receiverId,
+        type: 'friend_request',
+      },
+    });
+
+    // Kiểm tra metadata có chứa friendshipId không
+    if (notification && notification.metadata && notification.metadata.friendshipId === friendshipId) {
+      await notification.destroy();
+
+      const io = getIo();
+      const userRoom = `user_${receiverId}`;
+      // Gửi sự kiện xóa
+      io.to(userRoom).emit('notification:delete', { id: notification.id });
+      // Cập nhật số lượng chưa đọc
+      const unreadCount = await getUnreadNotificationsCount(receiverId);
+      io.to(userRoom).emit('notification:unread-count', { unread: unreadCount });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('NotificationService: Lỗi khi xóa thông báo theo friendshipId:', error);
+    throw error;
+  }
+};
+
+/**
  * @desc Xóa tất cả thông báo của một người dùng.
  * @param {number} userId - ID của người dùng.
  * @returns {Promise<number>} - Số lượng thông báo đã xóa.
@@ -359,10 +395,10 @@ export const createBulkNotifications = async (bulkData) => {
     const settingKey = getNotificationSettingKey(type);
     const filteredUserIds = users.filter(user => {
       if (!settingKey) return true; // Nếu không map được, cho phép tạo (system message, etc.)
-      
+
       const userSettings = user.notificationSettings || {};
       const notifSetting = userSettings[settingKey];
-      
+
       // Chỉ tạo nếu user đã bật in-app notification
       return notifSetting && notifSetting.inApp;
     }).map(user => user.id);

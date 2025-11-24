@@ -1,3 +1,48 @@
+<!-- Concise, actionable instructions for AI coding agents working on SapPhim -->
+# Copilot / AI Agent Quick Guide
+
+Purpose: short, high-value facts for an AI to be immediately productive in this monorepo.
+
+- **Monorepo layout:** `backend/` (Express + Sequelize + Socket.IO + Redis) and `frontend/` (Vite + React 19 + Redux Toolkit + TanStack Query).
+- **Start (dev):** `.\start-network.ps1` (preferred) or:
+  - `cd backend; npm install; npm run dev`
+  - `cd frontend; npm install; npm run dev`
+
+- **Auth & tokens:** backend uses JWTs (access ≈ 7d, refresh ≈ 30d stored in `RefreshToken` model). See `backend/middlewares/auth.middleware.js` and `frontend/src/services/api.js` for interceptor/refresh logic.
+
+- **Realtime:** Socket.IO bridge implemented in `backend/config/socket.js` and the frontend socket manager in `frontend/src/socket/socketManager.jsx`. Backend emits to rooms named `user_${userId}`. Redis pub/sub used for cross-instance broadcasts; Redis is optional in dev (safe fallbacks present in `backend/config/redis.js`).
+
+- **Database:** Sequelize models live in `backend/models/` with associations in `backend/models/associations.js`. There are no migrations; dev relies on model sync behavior in `backend/config/database.js`.
+
+- **File uploads & media:** Multer middlewares in `backend/middlewares/upload*.middleware.js`. Static files are served from `uploads/`. Video processing uses FFmpeg (look for FFmpeg/Bull queues in `queues/` and `workers/`).
+
+- **Key integration points (quick look):**
+  - API init & routes: `backend/index.js`
+  - Socket setup: `backend/config/socket.js`
+  - Redis helpers: `backend/config/redis.js`
+  - Axios + token refresh: `frontend/src/services/api.js`
+  - React Query setup: `frontend/src/utils/queryClient.js`
+
+- **Conventions to follow:**
+  - ES modules (`import`/`export`) in backend and frontend.
+  - Backend file names: `kebab-case.js`; frontend components: `PascalCase.jsx`.
+  - API responses: `{ data:..., message:... }` for success. Errors handled by `backend/middlewares/error.middleware.js`.
+
+- **Common agent tasks & where to start:**
+  - Add API route: create `backend/routes/<name>.routes.js` and register in `backend/index.js`.
+  - Add socket event: add handler in `attachEventHandlers()` inside `backend/config/socket.js` and add client handling in `frontend/src/socket/socketManager.jsx`.
+  - Add model: create file in `backend/models/` and wire up associations in `associations.js`.
+
+- **Environment & quick sanity checks:**
+  - Backend `.env` example: `backend/.env.example` (must set `JWT_SECRET`, DB creds, `CLIENT_URL`).
+  - Frontend `.env` uses `VITE_` prefix for variables consumed by Vite.
+
+- **Debugging gotchas:**
+  - Token refresh 401 loops: check `isRefreshing` logic in `frontend/src/services/api.js`.
+  - Socket events not received: ensure user is joined to `user_${id}` room and Redis pub/sub is active for multi-instance setups.
+  - Upload failures: check Multer limits and `uploads/` permissions.
+
+If anything here is unclear or you want a different level of detail (more file examples, code snippets, or a checklist for adding endpoints), tell me which sections to expand. 
 # AI Coding Agent Instructions
 
 ## Architecture Overview

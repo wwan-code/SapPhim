@@ -48,7 +48,7 @@ export const loginWithThirdParty = createAsyncThunk(
     try {
       const response = await authService.socialLogin(idToken, provider);
       const { user, accessToken, refreshToken, isNewUser } = response.data.data;
-      return { user, accessToken, refreshToken, isNewUser }; 
+      return { user, accessToken, refreshToken, isNewUser };
     } catch (error) {
       console.error(`Social login error (${provider}):`, error);
       const message = error.response?.data?.message || error.message || 'Đăng nhập bằng bên thứ 3 thất bại.';
@@ -81,7 +81,7 @@ export const updateUserProfile = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await userService.updateProfile(userData);
-      return response.data.data; 
+      return response.data.data;
     } catch (error) {
       const message = error.response?.data?.message || error.message || 'Cập nhật profile thất bại.';
       return rejectWithValue(message);
@@ -95,7 +95,7 @@ export const uploadUserAvatar = createAsyncThunk(
   async (formData, { rejectWithValue }) => {
     try {
       const response = await userService.uploadAvatar(formData);
-      return response.data.data; 
+      return response.data.data;
     } catch (error) {
       const message = error.response?.data?.message || error.message || 'Tải lên ảnh đại diện thất bại.';
       return rejectWithValue(message);
@@ -109,7 +109,7 @@ export const uploadUserCover = createAsyncThunk(
   async (formData, { rejectWithValue }) => {
     try {
       const response = await userService.uploadCover(formData);
-      return response.data.data; 
+      return response.data.data;
     } catch (error) {
       const message = error.response?.data?.message || error.message || 'Tải lên ảnh bìa thất bại.';
       return rejectWithValue(message);

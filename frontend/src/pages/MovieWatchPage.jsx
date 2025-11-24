@@ -1,45 +1,68 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import movieService from '@/services/movieService';
 import '@/assets/scss/pages/_movie-watch-page.scss';
 import { debounce } from 'lodash';
-
+import { toast } from 'react-toastify';
 import PlayerContainer from '@/components/watch/PlayerContainer';
 import MovieInfo from '@/components/watch/MovieInfo';
 import Sidebar from '@/components/watch/Sidebar';
 import MovieMeta from '@/components/watch/MovieMeta';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import MovieWatchSkeleton from '@/components/skeletons/MovieWatchSkeleton';
 import ErrorMessage from '@/components/common/ErrorMessage';
 import watchHistoryService from '@/services/watchHistoryService';
 import { useSelector } from 'react-redux';
 import CommentSection from '@/components/comments/CommentSection';
 import ContinueWatchingModal from '@/components/watch/ContinueWatchingModal';
+import EpisodeList from '../components/watch/EpisodeList';
+import { useGetMovieWatchData } from '@/hooks/useMovieQueries';
 
 const MovieWatchPage = () => {
   const { slug, episodeNumber } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useSelector((state) => state.auth);
-  const [movie, setMovie] = useState(null);
-  const [episodes, setEpisodes] = useState([]);
-  const [currentEpisode, setCurrentEpisode] = useState(null);
-  const [recommendedMovies, setRecommendedMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  // React Query for data fetching
+  const {
+    data: watchData,
+    isLoading: loading,
+    error: queryError
+  } = useGetMovieWatchData(slug, episodeNumber);
+
+  // Destructure data with defaults
+  const movie = watchData?.movie || null;
+  const episodes = watchData?.episodes || [];
+  const currentEpisode = watchData?.currentEpisode || null;
+  const recommendedMovies = watchData?.recommendedMovies || [];
+  const hasNoEpisodes = watchData?.hasNoEpisodes || false;
+  const initialProgress = watchData?.watchProgress || 0;
+
   const [isCinemaMode, setIsCinemaMode] = useState(false);
   const [autoNext, setAutoNext] = useState(true);
-  const currentTimeRef = useRef(0); // Track actual video current time
-  const isPlayingRef = useRef(false); // Track if video is playing
-  const playerContainerRef = useRef(null); // Ref to control video player
 
-  // Continue Watching state
+  const currentTimeRef = useRef(0);
+  const isPlayingRef = useRef(false);
+  const playerContainerRef = useRef(null);
+
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [savedProgress, setSavedProgress] = useState(0);
   const [isSeekingToProgress, setIsSeekingToProgress] = useState(false);
-  const hasCheckedProgressRef = useRef(false); // Prevent multiple checks
+  const hasCheckedProgressRef = useRef(false);
 
-  const toggleCinemaMode = () => {
+  // Initialize progress from API if available
+  useEffect(() => {
+    if (initialProgress > 0 && currentTimeRef.current === 0) {
+      currentTimeRef.current = initialProgress;
+    }
+  }, [initialProgress]);
+
+  const toggleCinemaMode = useCallback(() => {
     setIsCinemaMode(prevMode => !prevMode);
-  };
+  }, []);
 
   useEffect(() => {
     if (isCinemaMode) {
@@ -53,41 +76,10 @@ const MovieWatchPage = () => {
     };
   }, [isCinemaMode]);
 
-  useEffect(() => {
-    const fetchWatchPageData = async () => {
-      try {
-        setLoading(true);
-        const response = await movieService.getMovieWatchDataBySlug(slug, episodeNumber);
-        if (response.success) {
-          const { movie, currentEpisode, episodes, recommendedMovies, watchProgress } = response.data;
-          setMovie(movie);
-          setEpisodes(episodes);
-          setCurrentEpisode(currentEpisode);
-          setRecommendedMovies(recommendedMovies);
-          // Initialize current time from watch progress if available
-          if (watchProgress) {
-            currentTimeRef.current = watchProgress;
-          }
-        } else {
-          setError('Phim hoặc tập phim không được tìm thấy.');
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Lỗi khi tải dữ liệu phim.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWatchPageData();
-  }, [slug, episodeNumber, currentUser]);
-
   // Fetch watch history and check if we should show Continue Watching modal
   useEffect(() => {
     const checkWatchProgress = async () => {
-      // Only check once per episode load
       if (hasCheckedProgressRef.current) return;
-
-      // Must have user, movie, and episode data
       if (!currentUser || !movie || !currentEpisode) return;
 
       try {
@@ -99,7 +91,6 @@ const MovieWatchPage = () => {
         if (response.success && response.data) {
           const { progress } = response.data;
 
-          // Parse episode duration (format: "hh:mm:ss" or "mm:ss" or number)
           let durationInSeconds = 0;
           if (currentEpisode.duration) {
             if (typeof currentEpisode.duration === 'number') {
@@ -114,12 +105,10 @@ const MovieWatchPage = () => {
             }
           }
 
-          // Show modal if: progress > 5 seconds AND progress < 95% of duration
-          const MIN_PROGRESS = 5; // 5 seconds
-          const COMPLETION_THRESHOLD = 0.95; // 95%
+          const MIN_PROGRESS = 5;
+          const COMPLETION_THRESHOLD = 0.95;
 
           if (progress > MIN_PROGRESS) {
-            // If we have duration, check completion threshold
             if (durationInSeconds > 0) {
               const progressRatio = progress / durationInSeconds;
               if (progressRatio < COMPLETION_THRESHOLD) {
@@ -127,14 +116,12 @@ const MovieWatchPage = () => {
                 setShowContinueModal(true);
               }
             } else {
-              // No duration info, show modal anyway if progress > 5s
               setSavedProgress(progress);
               setShowContinueModal(true);
             }
           }
         }
       } catch (error) {
-        // 404 means no watch history, which is fine - just continue normally
         if (error.response?.status !== 404) {
           console.error('Error fetching watch progress:', error);
         }
@@ -154,45 +141,43 @@ const MovieWatchPage = () => {
   }, [slug, episodeNumber]);
 
   // Debounced save function - saves every 10 seconds while playing
-  const debouncedSaveProgress = useRef(
-    debounce((movieId, episodeId, progress, user) => {
+  const debouncedSaveProgress = useMemo(
+    () => debounce((movieId, episodeId, progress) => {
+      const user = currentUserRef.current;
       if (!user) return;
       watchHistoryService.saveProgress({
         movieId,
         episodeId,
-        progress: Math.floor(progress), // Save as integer seconds
+        progress: Math.floor(progress),
         timestamp: new Date().toISOString()
       }).catch((e) => console.error("Error saving watch history:", e));
-    }, 10000) // Save every 10 seconds
-  ).current;
+    }, 10000),
+    []
+  );
 
-  // Immediate save function for pause, seek, and unmount
   const saveProgressNow = useCallback((movieId, episodeId, progress) => {
-    if (!currentUser) return;
+    const user = currentUserRef.current;
+    if (!user) return;
     watchHistoryService.saveProgress({
       movieId,
       episodeId,
       progress: Math.floor(progress),
       timestamp: new Date().toISOString()
     }).catch((e) => console.error("Error saving watch history:", e));
-  }, [currentUser]);
+  }, []);
 
-  // Handle video time updates
   const handleTimeUpdate = useCallback((currentTime) => {
     currentTimeRef.current = currentTime;
 
-    // Only save if playing and we have valid data
     if (isPlayingRef.current && movie && currentEpisode && currentTime > 0) {
-      debouncedSaveProgress(movie.id, currentEpisode.id, currentTime, currentUser);
+      debouncedSaveProgress(movie.id, currentEpisode.id, currentTime);
     }
-  }, [movie, currentEpisode, debouncedSaveProgress, currentUser]);
+  }, [movie, currentEpisode, debouncedSaveProgress]);
 
-  // Handle play event
   const handlePlay = useCallback(() => {
     isPlayingRef.current = true;
   }, []);
 
-  // Handle pause event - save immediately
   const handlePause = useCallback(() => {
     isPlayingRef.current = false;
     if (movie && currentEpisode && currentTimeRef.current > 0) {
@@ -200,7 +185,6 @@ const MovieWatchPage = () => {
     }
   }, [movie, currentEpisode, saveProgressNow]);
 
-  // Handle seek events - save immediately after seek completes
   const handleSeeked = useCallback((newTime) => {
     currentTimeRef.current = newTime;
     if (movie && currentEpisode && newTime > 0) {
@@ -208,21 +192,53 @@ const MovieWatchPage = () => {
     }
   }, [movie, currentEpisode, saveProgressNow]);
 
-  // Handle video end - mark as completed or move to next episode
+  const handleEpisodeChange = useCallback((newEpisodeNumber) => {
+    navigate(`/watch/${slug}/episode/${newEpisodeNumber}`);
+  }, [navigate, slug]);
+
+  const handleNextEpisode = useCallback(() => {
+    const sortedEpisodes = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber);
+    const currentEpisodeIndex = sortedEpisodes.findIndex(
+      (ep) => ep.episodeNumber === currentEpisode.episodeNumber
+    );
+
+    if (currentEpisodeIndex > -1 && currentEpisodeIndex < sortedEpisodes.length - 1) {
+      const nextEpisode = sortedEpisodes[currentEpisodeIndex + 1];
+      handleEpisodeChange(nextEpisode.episodeNumber);
+    }
+  }, [episodes, currentEpisode, handleEpisodeChange]);
+
+  const hasNextEpisode = useMemo(() => {
+    if (!currentEpisode || !episodes || episodes.length === 0) return false;
+    const sortedEpisodes = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber);
+    const currentEpisodeIndex = sortedEpisodes.findIndex(
+      (ep) => ep.episodeNumber === currentEpisode.episodeNumber
+    );
+    return currentEpisodeIndex > -1 && currentEpisodeIndex < sortedEpisodes.length - 1;
+  }, [currentEpisode, episodes]);
+
+  const isAutoNextDisabled = useMemo(() => {
+    return movie?.type === 'movie' && movie?.belongToCategory === 'Phim lẻ';
+  }, [movie]);
+
   const handleVideoEnded = useCallback(() => {
     if (movie && currentEpisode) {
-      // Save final progress
       saveProgressNow(movie.id, currentEpisode.id, currentTimeRef.current);
-    }
-  }, [movie, currentEpisode, saveProgressNow]);
 
-  // Cleanup and final save on unmount or episode change
+      // Auto next episode logic
+      if (autoNext && !isAutoNextDisabled && hasNextEpisode) {
+        // Add a small delay for better UX
+        setTimeout(() => {
+          handleNextEpisode();
+        }, 1000);
+      }
+    }
+  }, [movie, currentEpisode, saveProgressNow, autoNext, isAutoNextDisabled, hasNextEpisode, handleNextEpisode]);
+
   useEffect(() => {
     return () => {
-      // Cancel any pending debounced saves
       debouncedSaveProgress.cancel();
 
-      // Save final progress if we have valid data
       if (movie && currentEpisode && currentTimeRef.current > 0) {
         watchHistoryService.saveProgress({
           movieId: movie.id,
@@ -234,21 +250,17 @@ const MovieWatchPage = () => {
     };
   }, [movie, currentEpisode, debouncedSaveProgress]);
 
-  // Initialize progress from watch history
   useEffect(() => {
     if (movie && currentEpisode) {
-      // Reset refs when episode changes
       currentTimeRef.current = 0;
       isPlayingRef.current = false;
     }
   }, [movie, currentEpisode]);
 
-  // Handle Continue Watching actions
   const handleContinueWatching = useCallback(() => {
     if (playerContainerRef.current && savedProgress > 0) {
       setIsSeekingToProgress(true);
       playerContainerRef.current.seekTo(savedProgress);
-      // Close modal after a short delay to allow seek to complete
       setTimeout(() => {
         setShowContinueModal(false);
         setIsSeekingToProgress(false);
@@ -256,10 +268,17 @@ const MovieWatchPage = () => {
     }
   }, [savedProgress]);
 
+  // Handle notify me when new episodes available
+  const handleNotifyMe = useCallback(() => {
+    // Placeholder - sẽ triển khai tính năng notification sau
+    console.log('Nhận thông báo khi có tập mới - Tính năng đang phát triển');
+    toast.info('Nhận thông báo khi có tập mới - Tính năng đang phát triển');
+    // TODO: Implement notification subscription
+  }, []);
+
   const handleStartOver = useCallback(async () => {
     setIsSeekingToProgress(true);
 
-    // Reset progress in database
     if (currentUser && movie && currentEpisode) {
       try {
         await watchHistoryService.saveProgress({
@@ -273,61 +292,39 @@ const MovieWatchPage = () => {
       }
     }
 
-    // Seek to beginning
     if (playerContainerRef.current) {
       playerContainerRef.current.seekTo(0);
     }
 
-    // Close modal
     setTimeout(() => {
       setShowContinueModal(false);
       setIsSeekingToProgress(false);
     }, 300);
   }, [currentUser, movie, currentEpisode]);
 
-  const handleEpisodeChange = (newEpisodeNumber) => {
-    navigate(`/watch/${slug}/episode/${newEpisodeNumber}`);
-  };
-
-  const handleNextEpisode = () => {
-    const sortedEpisodes = episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
-    const currentEpisodeIndex = sortedEpisodes.findIndex(
-      (ep) => ep.episodeNumber === currentEpisode.episodeNumber
-    );
-
-    if (currentEpisodeIndex > -1 && currentEpisodeIndex < sortedEpisodes.length - 1) {
-      const nextEpisode = sortedEpisodes[currentEpisodeIndex + 1];
-      handleEpisodeChange(nextEpisode.episodeNumber);
-    }
-  };
-
-  const hasNextEpisode = () => {
-    if (!currentEpisode || !episodes || episodes.length === 0) return false;
-    const sortedEpisodes = episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
-    const currentEpisodeIndex = sortedEpisodes.findIndex(
-      (ep) => ep.episodeNumber === currentEpisode.episodeNumber
-    );
-    return currentEpisodeIndex > -1 && currentEpisodeIndex < sortedEpisodes.length - 1;
-  };
+  // Memoize default title
+  const defaultTitle = useMemo(() => {
+    return movie?.titles?.find((t) => t.type === 'default')?.title || 'Untitled';
+  }, [movie]);
 
   if (loading) {
-    return <LoadingSpinner fullscreen label="Đang tải phim..." />;
+    return <MovieWatchSkeleton />;
   }
 
-  if (error) {
+  if (queryError) {
     return (
       <div className="container-fluid page-container">
         <ErrorMessage
           variant="card"
           title="Lỗi tải phim"
-          message={error}
-          onRetry={() => window.location.reload()} // Simple retry by reloading
+          message={queryError.message || 'Lỗi không xác định'}
+          onRetry={() => window.location.reload()}
         />
       </div>
     );
   }
 
-  if (!movie || !currentEpisode) {
+  if (!movie) {
     return (
       <div className="container-fluid page-container">
         <ErrorMessage
@@ -339,8 +336,6 @@ const MovieWatchPage = () => {
     );
   }
 
-  const defaultTitle = movie.titles?.find((t) => t.type === 'default')?.title || 'Untitled';
-
   return (
     <div className="movie-watch-page">
       <div className="movie-watch-page__main-content">
@@ -348,24 +343,57 @@ const MovieWatchPage = () => {
           ref={playerContainerRef}
           episode={currentEpisode}
           movieTitle={defaultTitle}
+          hasNoEpisodes={hasNoEpisodes}
           onTimeUpdate={handleTimeUpdate}
           onPlay={handlePlay}
           onPause={handlePause}
           onSeeked={handleSeeked}
           onEnded={handleVideoEnded}
+          onNotifyMe={handleNotifyMe}
         />
+
         <MovieInfo
           movie={movie}
           currentEpisode={currentEpisode}
           onToggleCinemaMode={toggleCinemaMode}
           isCinemaMode={isCinemaMode}
           onNextEpisode={handleNextEpisode}
-          hasNextEpisode={hasNextEpisode()}
+          hasNextEpisode={hasNextEpisode}
         />
+
+        {/* Episode List Section */}
+        {!hasNoEpisodes && episodes && episodes.length > 0 && (
+          <div className="episode-list-section">
+            <div className="section-header">
+              <h3>Danh sách tập</h3>
+              {!isAutoNextDisabled && (
+                <div className="auto-next-toggle" title="Tự động chuyển tập">
+                  <label htmlFor="auto-next">Tự động chuyển tập</label>
+                  <label className="toggle-switch" htmlFor="auto-next">
+                    <input
+                      type="checkbox"
+                      id="auto-next"
+                      checked={autoNext}
+                      onChange={(e) => setAutoNext(e.target.checked)}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+              )}
+            </div>
+            <EpisodeList
+              episodes={episodes}
+              currentEpisode={currentEpisode}
+              onEpisodeChange={handleEpisodeChange}
+            />
+          </div>
+        )}
+
         <MovieMeta movie={movie} />
+
         <CommentSection
-          contentType="episode"
-          contentId={currentEpisode.id}
+          contentType={currentEpisode ? 'episode' : 'movie'}
+          contentId={currentEpisode ? currentEpisode.id : movie.id}
           currentUser={currentUser}
           showEpisodeFilter={false}
           moderationMode={true}
@@ -373,19 +401,8 @@ const MovieWatchPage = () => {
       </div>
 
       <Sidebar
-        episodes={episodes}
-        currentEpisode={currentEpisode}
         recommendedMovies={recommendedMovies}
-        onEpisodeChange={handleEpisodeChange}
-        autoNext={autoNext}
-        onAutoNextChange={setAutoNext}
       />
-
-      {isCinemaMode && (
-        <button className="cinema-mode-exit-btn" onClick={toggleCinemaMode}>
-          Thoát chế độ rạp
-        </button>
-      )}
 
       {/* Continue Watching Modal */}
       <ContinueWatchingModal

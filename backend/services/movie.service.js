@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { addViewJob } from '../queues/viewQueue.js';
+import AppError from '../utils/appError.js';
 
 const { Movie, Genre, Country, Category, Series, Episode, Section, Favorite, WatchHistory, sequelize } = db;
 
@@ -21,7 +22,6 @@ const getAllMoviesNoPagination = async () => {
       { model: Genre, as: 'genres', through: { attributes: [] } },
       { model: Country, as: 'country' },
       { model: Category, as: 'category' },
-      { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
     ],
     order: [['createdAt', 'DESC']],
   });
@@ -50,7 +50,7 @@ const getMovies = async (query) => {
     { model: Country, as: 'country' },
     { model: Category, as: 'category' },
     { model: Series, as: 'series' },
-    { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
+    { model: Episode, as: 'episodes', attributes: ['episodeNumber'], limit: 1, order: [['episodeNumber', 'DESC']] },
   ];
   let order = [['createdAt', 'DESC']];
 
@@ -193,7 +193,7 @@ const getMovieWatchDataBySlug = async (slug, episodeNumber = null, userId = null
   });
 
   if (!movie) {
-    throw new Error('Phim không tồn tại.');
+    throw new AppError('Phim không tồn tại.', 404, 'MOVIE_NOT_FOUND');
   }
 
   const allEpisodes = await Episode.findAll({
@@ -202,17 +202,20 @@ const getMovieWatchDataBySlug = async (slug, episodeNumber = null, userId = null
   });
 
   let currentEpisode = null;
+  let hasNoEpisodes = false;
+
   if (movie.type === 'series' && allEpisodes.length > 0) {
     const targetEpisodeNumber = episodeNumber ? parseInt(episodeNumber, 10) : 1;
     currentEpisode = allEpisodes.find(ep => ep.episodeNumber === targetEpisodeNumber);
     if (!currentEpisode) {
-      throw new Error(`Tập phim số ${targetEpisodeNumber} không tồn tại.`);
+      throw new AppError(`Tập phim số ${targetEpisodeNumber} không tồn tại.`, 404, 'EPISODE_NOT_FOUND');
     }
   } else if (movie.type === 'movie' && allEpisodes.length > 0) {
     // Phim lẻ chỉ có 1 tập, lấy tập đầu tiên
     currentEpisode = allEpisodes[0];
   } else if (allEpisodes.length === 0) {
-    throw new Error('Không có tập phim nào cho phim này.');
+    // Trường hợp không có tập phim - không throw error, trả về flag
+    hasNoEpisodes = true;
   }
 
   // Tăng lượt xem cho tập phim hiện tại (Async)
@@ -238,6 +241,7 @@ const getMovieWatchDataBySlug = async (slug, episodeNumber = null, userId = null
     recommendedMovies: recommendedMovies.data,
     moviesInSameSeries: moviesInSameSeries.data,
     watchProgress,
+    hasNoEpisodes, // Flag để frontend biết không có episodes
   };
 };
 
@@ -421,17 +425,24 @@ const deleteMovie = async (id) => {
 
   const t = await sequelize.transaction();
   try {
-    // Xóa các liên kết và tài nguyên phụ thuộc
-    await movie.setGenres([], { transaction: t }); // Xóa liên kết trong movie_genres
-    await Episode.destroy({ where: { movieId: id }, transaction: t });
+    // 1. Clear many-to-many genre relationships (no cascade relationship)
+    await movie.setGenres([], { transaction: t });
+
+    // 2. Delete Sections manually (no cascade relationship)
     await Section.destroy({ where: { movieId: id }, transaction: t });
 
-    // Xóa phim
+    // 3. Delete Favorites manually (no cascade relationship)
+    await Favorite.destroy({ where: { movieId: id }, transaction: t });
+
+    // 4. Delete Movie - Database CASCADE will automatically handle:
+    //    - All Episodes (Movie → Episode onDelete: 'CASCADE')
+    //    - All WatchHistory for Movie (Movie → WatchHistory onDelete: 'CASCADE')
+    //    - All WatchHistory for Episodes (Episode → WatchHistory onDelete: 'CASCADE')
     await movie.destroy({ transaction: t });
 
     await t.commit();
 
-    // Xóa thư mục uploads của phim
+    // 5. Delete upload directory (outside transaction - file system operation)
     const movieUploadDir = path.join(__dirname, `../uploads/movies/${movie.slug}`);
     try {
       if (fs.existsSync(movieUploadDir)) {
@@ -439,7 +450,7 @@ const deleteMovie = async (id) => {
       }
     } catch (err) {
       console.error(`Lỗi khi xóa thư mục ${movieUploadDir}:`, err);
-      // Không throw lỗi ở đây để không làm hỏng response thành công
+      // Don't throw error here to avoid breaking the successful delete response
     }
   } catch (error) {
     await t.rollback();
@@ -453,7 +464,7 @@ const COMMON_MOVIE_INCLUDES = [
   { model: Country, as: 'country', attributes: ['id', 'title', 'slug'] },
   { model: Category, as: 'category', attributes: ['id', 'title', 'slug'] },
   { model: Series, as: 'series' },
-  { model: Episode, as: 'episodes', order: [['episodeNumber', 'DESC']], limit: 1 }
+  { model: Episode, as: 'episodes', attributes: ['episodeNumber'], order: [['episodeNumber', 'DESC']], limit: 1 }
 ];
 const HERO_SCORING_WEIGHTS = {
   views: 0.5,
@@ -705,7 +716,7 @@ const getLatestMovies = async (query) => {
       { model: Genre, as: 'genres', attributes: ['title', 'slug'], through: { attributes: [] } },
       { model: Country, as: 'country' },
       { model: Category, as: 'category' },
-      { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
+      { model: Episode, as: 'episodes', attributes: ['episodeNumber'], limit: 1, order: [['episodeNumber', 'DESC']] },
     ],
     attributes: { exclude: ['uuid', 'createdAt', 'countryId', 'categoryId'] },
     limit: parseInt(limit),
@@ -757,7 +768,7 @@ const getSimilarMovies = async (movieId, query) => {
       { model: Country, as: 'country' },
       { model: Category, as: 'category' },
       { model: Series, as: 'series' },
-      { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
+      { model: Episode, as: 'episodes', attributes: ['episodeNumber'], limit: 1, order: [['episodeNumber', 'DESC']] },
     ],
     limit: parseInt(limit),
     order: sequelize.random(), // Sắp xếp ngẫu nhiên
@@ -797,7 +808,7 @@ const getMoviesInSameSeries = async (movieId, query) => {
       { model: Country, as: 'country' },
       { model: Category, as: 'category' },
       { model: Series, as: 'series' },
-      { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
+      { model: Episode, as: 'episodes', attributes: ['episodeNumber'], limit: 1, order: [['episodeNumber', 'DESC']] },
     ],
     order: [['releaseDate', 'ASC']],
     limit: parseInt(limit),
@@ -862,7 +873,7 @@ const getRecommendedMovies = async (movieId, query) => {
     { model: Genre, as: 'genres', through: { attributes: [] } },
     { model: Country, as: 'country' },
     { model: Category, as: 'category' },
-    { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
+    { model: Episode, as: 'episodes', attributes: ['episodeNumber'], limit: 1, order: [['episodeNumber', 'DESC']] },
   ];
 
   if (genreIds.length > 0) {
@@ -1045,7 +1056,7 @@ const getTheaterMovies = async (query) => {
       { model: Genre, as: 'genres', through: { attributes: [] } },
       { model: Country, as: 'country' },
       { model: Category, as: 'category' },
-      { model: Episode, as: 'episodes', order: [['episodeNumber', 'ASC']] },
+      { model: Episode, as: 'episodes', attributes: ['episodeNumber'], limit: 1, order: [['episodeNumber', 'DESC']] },
     ],
     limit: parseInt(limit),
     offset,

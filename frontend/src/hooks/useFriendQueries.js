@@ -1,7 +1,10 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
+import { useMemo } from 'react';
 import friendService from '@/services/friendService';
+import userService from '@/services/userService';
 import { useSelector } from 'react-redux';
+
 // Khai báo key cho các query để quản lý tập trung và tránh lỗi chính tả
 export const friendQueryKeys = {
   all: ['friends'],
@@ -9,6 +12,35 @@ export const friendQueryKeys = {
   pending: () => [...friendQueryKeys.all, 'pending'],
   sent: () => [...friendQueryKeys.all, 'sent'],
   search: (query) => [...friendQueryKeys.all, 'search', query],
+  statuses: (ids) => [...friendQueryKeys.all, 'statuses', [...ids].sort().join(',')],
+};
+
+/**
+ * Hook để lấy trạng thái online/offline của danh sách bạn bè
+ * @param {Array<number>} ids - Danh sách user IDs cần lấy trạng thái
+ * @returns {object} Trạng thái của query từ React Query
+ */
+export const useGetFriendStatuses = (ids = []) => {
+  // Memoize và sort IDs để tạo stable cache key
+  const sortedIds = useMemo(() => {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    return [...new Set(ids)].sort((a, b) => a - b);
+  }, [ids.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return useQuery({
+    queryKey: friendQueryKeys.statuses(sortedIds),
+    queryFn: async () => {
+      if (sortedIds.length === 0) return [];
+      const response = await userService.getUsersPresence(sortedIds);
+      return response.data || [];
+    },
+    enabled: sortedIds.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevent spam
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    retry: 2,
+  });
 };
 
 /**
@@ -151,6 +183,29 @@ export const useRejectFriendRequest = () => {
     },
     onError: (error) => {
       const message = error.response?.data?.message || 'Từ chối lời mời thất bại.';
+      toast.error(message);
+    },
+  });
+};
+
+
+
+/**
+ * Hook (mutation) để hủy lời mời kết bạn đã gửi.
+ * @returns {object} Trạng thái của mutation.
+ */
+export const useCancelFriendRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId) => friendService.cancelRequest(requestId),
+    onSuccess: () => {
+      toast.info('Đã hủy lời mời kết bạn.');
+      // Vô hiệu hóa cache của danh sách đã gửi và kết quả tìm kiếm
+      queryClient.invalidateQueries({ queryKey: friendQueryKeys.sent() });
+      queryClient.invalidateQueries({ queryKey: friendQueryKeys.search('') }); // Invalidate all searches
+    },
+    onError: (error) => {
+      const message = error.response?.data?.message || 'Hủy lời mời thất bại.';
       toast.error(message);
     },
   });

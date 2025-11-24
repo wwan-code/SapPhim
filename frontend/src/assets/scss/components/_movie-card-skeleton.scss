@@ -7,15 +7,6 @@
     height: $height;
     border-radius: $border-radius;
     @include shimmer-animation;
-    background: linear-gradient(
-      90deg,
-      var(--w-background-color-dark) 0%,
-      var(--w-background-color-light) 20%,
-      var(--w-background-color-dark) 40%,
-      var(--w-background-color-dark) 100%
-    );
-    background-size: 200% 100%;
-    animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
 .movie-card-skeleton {
@@ -158,6 +149,7 @@
 
     // High contrast mode
     @media (prefers-contrast: high) {
+
         &__image,
         &__title,
         &__year,
